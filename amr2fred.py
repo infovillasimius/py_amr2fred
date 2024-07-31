@@ -178,6 +178,13 @@ class Node:
             snt += node.get_snt()
         return snt
 
+    def get_args(self):
+        args_list = []
+        for node in self.node_list:
+            if re.match(Glossary.AMR_ARG, node.relation.lower()):
+                args_list.append(node)
+        return args_list
+
 
 class Propbank:
     SEPARATOR = "\t"
@@ -207,6 +214,20 @@ class Propbank:
             if i > 0:
                 rows.append(row)
         return [header, rows]
+
+    def frame_find(self, word, frame_field):
+        frame_list = []
+        for frame in self.frame_matrix[1]:
+            if word == frame[frame_field.value]:
+                frame_list.append(frame)
+        return frame_list
+
+    def role_find(self, word, role_field, value, role_field_2):
+        role_list = []
+        for role in self.role_matrix[1]:
+            if word == role[role_field.value] and value == role[role_field_2.value]:
+                role_list.append(role)
+        return role_list
 
 
 class Parser:
@@ -547,6 +568,44 @@ class Parser:
         lemma = root.verb
         if root.node_type == Glossary.NodeType.VERB:
             pb = Propbank.get_propbank()
+            lemma2 = lemma[3:].replace(".", "-")
+            roles = pb.frame_find(Glossary.PB_ROLESET + lemma2, Glossary.PropbankFrameFields.PB_Frame)
+            if len(roles) > 0:
+                label = roles[0][Glossary.PropbankFrameFields.PB_FrameLabel.value]
+                if len(label) > 0 and isinstance(root.get_child(Glossary.RDF_TYPE), Node):
+                    root.get_child(Glossary.RDF_TYPE).add(Node(label, Glossary.RDFS_LABEL, Glossary.NodeStatus.OK))
+                new_nodes_vars = []
+                for line in roles:
+                    fn_frame = line[Glossary.PropbankFrameFields.FN_Frame.value]
+                    if fn_frame is not None and len(fn_frame) > 0 and fn_frame not in new_nodes_vars:
+                        new_nodes_vars.append(fn_frame)
+                    va_frame = line[Glossary.PropbankFrameFields.VA_Frame.value]
+                    if va_frame is not None and len(va_frame) > 0 and va_frame not in new_nodes_vars:
+                        new_nodes_vars.append(va_frame)
+
+                type_node = root.get_child(Glossary.RDF_TYPE)
+                if isinstance(type_node, Node):
+                    for var in new_nodes_vars:
+                        new_node = Node(var, Glossary.FS_SCHEMA_SUBSUMED_UNDER, Glossary.NodeStatus.OK)
+                        type_node.add(new_node)
+                        new_node.visibility = False
+
+                # search for roles
+                for node in root.get_args():
+                    if isinstance(node, Node):
+                        r = Glossary.PB_ROLESET + lemma2
+                        pb_roles = pb.role_find(r,
+                                                Glossary.PropbankRoleFields.PB_Frame,
+                                                Glossary.PB_SCHEMA + node.relation[1:],
+                                                Glossary.PropbankRoleFields.PB_ARG)
+                        if (len(pb_roles) > 0
+                                and pb_roles[0][Glossary.PropbankRoleFields.PB_Role.value] is not None
+                                and len(pb_roles[0][Glossary.PropbankRoleFields.PB_Role.value]) > 0):
+                            node.relation = pb_roles[0][Glossary.PropbankRoleFields.PB_Role.value]
+                        node.status = Glossary.NodeStatus.OK
+
+        for i, node in enumerate(root.node_list):
+            root.node_list[i] = self.verbs_elaboration(node)
         return root
 
     def topic(self, root):
@@ -566,3 +625,4 @@ if __name__ == '__main__':
     print(nodo.to_string())
     # print(nodo)
     print(p.check(nodo))
+
