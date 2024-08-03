@@ -1,8 +1,9 @@
 import csv
 import re
 
-from glossary import Glossary
 from unidecode import unidecode
+
+from glossary import Glossary
 
 
 class Couple:
@@ -684,7 +685,6 @@ if __name__ == '__main__':
     p = Parser.get_parser()
     # nodo = p.parse('''(c / charge-05 :ARG1 (h / he) :ARG2 (a / and :op1 (i / intoxicate-01 :ARG1 h
     # :location (p / public)) :op2 (r / resist-01 :ARG0 h :ARG1 (a2 / arrest-01 :ARG1 h))))''')
-
     nodo = p.parse("(z0 / lawyer :domain (z1 / man))")
     print(nodo.to_string())
     # print(nodo)
