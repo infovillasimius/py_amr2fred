@@ -1,5 +1,6 @@
 import csv
 import re
+
 from glossary import Glossary
 from unidecode import unidecode
 
@@ -150,8 +151,8 @@ class Node:
         if node is None and relation is not None and parser_nodes_copy is None:
             new_node = Node(self.var, relation, self.status)
             new_node.__node_id = self.__node_id
-            for n in self.node_list:
-                new_node.add(n)
+            # for n in self.node_list:
+            #     new_node.add(n)
             return new_node
 
         if node is not None and relation is not None and parser_nodes_copy is None:
@@ -184,6 +185,9 @@ class Node:
             if re.match(Glossary.AMR_ARG, node.relation.lower()):
                 args_list.append(node)
         return args_list
+
+    def get_node_id(self):
+        return self.__node_id
 
 
 class Propbank:
@@ -536,30 +540,72 @@ class Parser:
         return root
 
     def set_equals(self, root):
+        # TODO
         return root
 
+    def get_equals(self, root):
+        # TODO
+        return []
+
     def dom_verify(self, root):
+        dom = root.get_child(Glossary.AMR_DOMAIN)
+        if dom is not None:
+            instance = root.get_instance()
+            if instance is None:
+                instance = self.get_instance(root.get_node_id())
+            self.topic_flag = False
+            dom.relation = Glossary.TOP
+            if dom.get_instance() is None and self.get_instance(dom.get_node_id()) is not None:
+                n_var = self.get_instance(dom.get_node_id())
+            elif dom.get_instance() is not None:
+                n_var = dom.get_instance().var
+            else:
+                n_var = Glossary.FRED + dom.var.replace(Glossary.LITERAL, "")
+            dom.var = n_var
+            if instance is None:
+                rel = Glossary.DUL_HAS_QUALITY
+            elif instance.var in Glossary.ADJECTIVE:
+                rel = Glossary.DUL_HAS_QUALITY
+                self.treat_instance(root)
+                root.var = Glossary.FRED + root.get_instance().var.capitalize()
+            else:
+                rel = Glossary.RDF_TYPE
+                root.var = Glossary.FRED + instance.var.capitalize()
+                self.remove_instance(root)
+            new_node = root.get_copy(relation=rel)
+            dom.node_list.append(new_node)
+            self.nodes.append(new_node)
+
+        for i, node in enumerate(root.node_list):
+            root.node_list[i] = self.dom_verify(node)
         return root
 
     def control_ops(self, root):
+        # TODO
         return root
 
     def li_verify(self, root):
+        # TODO
         return root
 
     def inverse_checker(self, root):
+        # TODO
         return root
 
     def mod_verify(self, root):
+        # TODO
         return root
 
     def list_elaboration(self, root):
+        # TODO
         return root
 
     def add_parent_list(self, root):
+        # TODO
         return root
 
     def instance_elaboration(self, root):
+        # TODO
         return root
 
     def verbs_elaboration(self, root):
@@ -614,15 +660,32 @@ class Parser:
         return root
 
     def residual(self, root):
+        # TODO
         return root
+
+    def get_instance(self, node_id):
+        for node in self.nodes_copy:
+            if node.get_node_id() == node_id and node.get_instance() is not None:
+                return node.get_instance()
+        return None
+
+    def treat_instance(self, root):
+        for node in self.get_equals(root):
+            node.var = root.var
+        if root.get_instance() is not None:
+            root.get_instance().status = Glossary.NodeStatus.REMOVE
+
+    def remove_instance(self, root):
+        # TODO
+        pass
 
 
 if __name__ == '__main__':
     p = Parser.get_parser()
-    nodo = p.parse('''(c / charge-05 :ARG1 (h / he) :ARG2 (a / and :op1 (i / intoxicate-01 :ARG1 h 
-    :location (p / public)) :op2 (r / resist-01 :ARG0 h :ARG1 (a2 / arrest-01 :ARG1 h))))''')
+    # nodo = p.parse('''(c / charge-05 :ARG1 (h / he) :ARG2 (a / and :op1 (i / intoxicate-01 :ARG1 h
+    # :location (p / public)) :op2 (r / resist-01 :ARG0 h :ARG1 (a2 / arrest-01 :ARG1 h))))''')
 
+    nodo = p.parse("(z0 / lawyer :domain (z1 / man))")
     print(nodo.to_string())
     # print(nodo)
-    print(p.check(nodo))
-
+    # print(p.check(nodo))
