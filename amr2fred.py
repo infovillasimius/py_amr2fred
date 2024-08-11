@@ -190,6 +190,27 @@ class Node:
     def get_node_id(self):
         return self.__node_id
 
+    def get_nodes_with_parent_list_not_empty(self):
+        snt = []
+        for node in self.node_list:
+            if len(node.parent_list) != 0:
+                snt.append(node)
+        return snt
+
+    def get_children(self, relation):
+        node_list = []
+        for node in self.node_list:
+            if node.relation == relation:
+                node_list.append(node)
+        return node_list
+
+    def add_all(self, node_list):
+        if isinstance(node_list, list):
+            self.node_list += node_list
+
+    def set_status(self, status):
+        self.status = status
+
 
 class Propbank:
     SEPARATOR = "\t"
@@ -594,7 +615,105 @@ class Parser:
         return root
 
     def mod_verify(self, root):
-        # TODO
+        if not isinstance(root, Node):
+            return root
+        flag = True
+        instance = self.get_instance(root.get_node_id())
+        if isinstance(instance, Node) and len(instance.var) > 3 and re.fullmatch(Glossary.AMR_VERB, instance.var[3:]):
+            flag = False
+
+        dom = root.get_child(Glossary.AMR_DOMAIN)
+        mods = root.get_children(Glossary.AMR_MOD)
+
+        for mod_node in mods:
+            if isinstance(mod_node, Node) and flag:
+                if isinstance(mod_node.get_instance(), Node):
+                    mod_instance = mod_node.get_instance()
+                elif isinstance(self.get_instance(mod_node.get_node_id()), Node):
+                    mod_instance = self.get_instance(mod_node.get_node_id())
+                else:
+                    mod_instance = None
+                if (mod_node.get_child(Glossary.AMR_DEGREE) is not None
+                        and mod_node.get_child(Glossary.AMR_COMPARED_TO) is not None
+                        and mod_instance is not None):
+                    # caso :mod + :degree + :compared-to
+                    instance.var = mod_instance.var + instance.var.capitalize()
+                    self.remove_instance(mod_node)
+                    root.node_list.remove(mod_node)
+                    root.add_all(mod_node.node_list)
+                elif (mod_instance is not None
+                      and instance is not None
+                      and not self.is_verb(mod_instance.var)
+                      and mod_instance != Glossary.DISJUNCT
+                      and mod_instance != Glossary.CONJUNCT
+                      and mod_node.get_child(Glossary.AMR_NAME) is None):
+                    if mod_node.get_instance() is not None:
+                        mod_ins = mod_node.get_instance().var
+                    else:
+                        mod_ins = self.get_instance(mod_node.get_node_id()).var
+                    contains = mod_ins in Glossary.ADJECTIVE
+                    demonstratives = " " + mod_ins + " " in Glossary.DEMONSTRATIVES
+                    if contains:
+                        mod_node.relation = Glossary.DUL_HAS_QUALITY
+                        mod_node.var = Glossary.FRED + mod_ins.capitalize()
+                        self.remove_instance(mod_node)
+                    elif demonstratives:
+                        mod_node.relation = Glossary.QUANT_HAS_DETERMINER
+                        mod_node.var = Glossary.FRED + mod_ins.capitalize()
+                        self.remove_instance(mod_node)
+                    else:
+                        if dom is None:
+                            root_ins = instance.var
+                            root.var = Glossary.FRED + root_ins.lower() + "_" + self.occurrence(root_ins)
+                            self.remove_instance(root)
+                            mod_node.var = (Glossary.FRED
+                                            + mod_ins.replace(Glossary.FRED, "").capitalize()
+                                            + root_ins.replace(Glossary.FRED, "").capitalize())
+                            self.remove_instance(mod_node)
+                            mod_node.relation = Glossary.RDF_TYPE
+                            if mod_node.get_child(Glossary.RDFS_SUBCLASS_OF) is None:
+                                mod_node.add(Node(Glossary.FRED + root_ins.replace(Glossary.FRED, "").capitalize(),
+                                                  Glossary.RDFS_SUBCLASS_OF))
+                            mod_node.add(Node(Glossary.FRED + (mod_ins.replace(Glossary.FRED, "")).capitalize(),
+                                              Glossary.DUL_ASSOCIATED_WITH))
+                        else:
+                            root_ins = instance.var
+                            root.var = (Glossary.FRED + mod_ins.replace(Glossary.FRED, "").capitalize()
+                                        + root_ins.replace(Glossary.FRED, ""))
+                            instance.var = root.var
+                            self.remove_instance(root)
+                            mod_node.var = Glossary.FRED + mod_ins.replace(Glossary.FRED, "").capitalize()
+                            mod_node.relation = Glossary.DUL_ASSOCIATED_WITH
+                            self.remove_instance(mod_node)
+                            if root.get_child(Glossary.RDFS_SUBCLASS_OF) is None:
+                                root.add(Node(Glossary.FRED + root_ins.replace(Glossary.FRED, "").capitalize(),
+                                              Glossary.RDFS_SUBCLASS_OF))
+                    mod_node.set_status(Glossary.NodeStatus.OK)
+            elif mod_node is not None and not flag:
+                pass
+                if mod_node.get_instance() is not None:
+                    mod_ins = mod_node.get_instance().var
+                else:
+                    mod_ins = self.get_instance(mod_node.get_node_id()).var
+                contains = mod_ins in Glossary.ADJECTIVE
+                demonstratives = " " + mod_ins + " " in Glossary.DEMONSTRATIVES
+                if contains:
+                    mod_node.relation = Glossary.DUL_HAS_QUALITY;
+                    mod_node.var = Glossary.FRED + mod_ins.capitalize()
+                    self.remove_instance(mod_node)
+                elif demonstratives:
+                    mod_node.relation = Glossary.QUANT_HAS_DETERMINER
+                    mod_node.var = Glossary.FRED + mod_ins.capitalize()
+                    self.remove_instance(mod_node)
+                else:
+                    mod_node.var = Glossary.FRED + mod_ins.replace(Glossary.FRED, "").capitalize()
+                    mod_node.relation = Glossary.DUL_ASSOCIATED_WITH
+                    self.remove_instance(mod_node)
+                mod_node.set_status(Glossary.NodeStatus.OK)
+
+        for i, node in enumerate(root.node_list):
+            root.node_list[i] = self.mod_verify(node)
+
         return root
 
     def list_elaboration(self, root):
@@ -602,7 +721,19 @@ class Parser:
         return root
 
     def add_parent_list(self, root):
-        # TODO
+        to_add = root.get_nodes_with_parent_list_not_empty()
+        if len(to_add) != 0:
+            for node in to_add:
+                for node_1 in node.parent_list:
+                    flag = False
+                    for node_2 in root.node_list:
+                        if node_1.relation == node_2.relation and node_1.var == node_2.var:
+                            flag = True
+                    if not flag:
+                        root.node_list.append(node_1)
+                root.node_list.remove(node)
+        for i, node in enumerate(root.node_list):
+            root.node_list[i] = self.add_parent_list(node)
         return root
 
     def instance_elaboration(self, root):
@@ -677,6 +808,16 @@ class Parser:
             root.get_instance().status = Glossary.NodeStatus.REMOVE
 
     def remove_instance(self, root):
+        for node in self.get_equals(root):
+            node.var = root.var
+        if root.get_instance() is not None:
+            root.node_list.remove(root.get_instance())
+
+    def is_verb(self, var):
+        # TODO
+        return False
+
+    def occurrence(self, root_ins):
         # TODO
         pass
 
