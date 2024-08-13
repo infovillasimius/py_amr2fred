@@ -20,6 +20,9 @@ class Couple:
     def get_occurrence(self):
         return self.__occurrence
 
+    def set_occurrence(self, occurrence):
+        self.__occurrence = occurrence
+
     def increment_occurrence(self):
         self.__occurrence += 1
 
@@ -29,20 +32,20 @@ class Node:
     level = 0
 
     def __init__(self, var, relation, status=Glossary.NodeStatus.AMR, visibility=True):
-        self.relation = relation
-        self.label = ""
-        self.var = var
-        self.node_list = []
-        self.parent = None
-        self.parent_list = []
-        self.visibility = visibility
-        self.prefix = False
-        self.status = status
-        self.node_type = Glossary.NodeType.OTHER
-        self.__node_id = Node.unique_id
+        self.relation: str = relation
+        self.label: str = ""
+        self.var: str = var
+        self.node_list: list = []
+        self.parent: Node = None
+        self.parent_list: list = []
+        self.visibility: bool = visibility
+        self.prefix: bool = False
+        self.status: Glossary.NodeStatus = status
+        self.node_type: Glossary.NodeType = Glossary.NodeType.OTHER
+        self.__node_id: int = Node.unique_id
         Node.unique_id += 1
-        self.verb = var
-        self.malformed = False
+        self.verb: str = var
+        self.malformed: bool = False
 
     def __str__(self):
         if Parser.endless > Glossary.ENDLESS:
@@ -70,7 +73,7 @@ class Node:
             return False
         return self.__node_id == other.__node_id
 
-    def to_string(self):
+    def to_string(self) -> str:
         if Parser.endless > Glossary.ENDLESS:
             return Glossary.RECURSIVE_ERROR
         stringa = "\n" + "\t" * Node.level
@@ -89,12 +92,18 @@ class Node:
         return stringa
 
     def get_instance(self):
+        """
+        :rtype: Node
+        """
         for node in self.node_list:
             if node.relation == Glossary.INSTANCE:
                 return node
         return None
 
-    def get_child(self, relation):
+    def get_child(self, relation: str):
+        """
+        :rtype: Node
+        """
         if isinstance(relation, str):
             for node in self.node_list:
                 if node.relation == relation:
@@ -102,6 +111,9 @@ class Node:
         return None
 
     def get_inverse(self):
+        """
+        :rtype: Node
+        """
         for node in self.node_list:
             if (re.search(Glossary.AMR_INVERSE, node.relation) and
                     node.relation != Glossary.AMR_PREP_ON_BEHALF_OF and
@@ -114,7 +126,10 @@ class Node:
         return None
 
     def get_inverses(self):
-        nodes = []
+        """
+        :rtype: list[Node]
+        """
+        nodes = [Node]
         for node in self.node_list:
             if (re.search(Glossary.AMR_INVERSE, node.relation) and
                     node.relation != Glossary.AMR_PREP_ON_BEHALF_OF and
@@ -138,6 +153,9 @@ class Node:
         node.parent = self
 
     def get_copy(self, node=None, relation=None, parser_nodes_copy=None):
+        """
+        :rtype: Node
+        """
         if Parser.endless > Glossary.ENDLESS:
             return None
 
@@ -173,7 +191,10 @@ class Node:
             return new_node
 
     def get_snt(self):
-        snt = []
+        """
+        :rtype: list[Node]
+        """
+        snt = [Node]
         for node in self.node_list:
             if node.relation == Glossary.AMR_SENTENCE:
                 snt.append(node)
@@ -181,16 +202,19 @@ class Node:
         return snt
 
     def get_args(self):
-        args_list = []
+        """
+        :rtype: list[Node]
+        """
+        args_list = [Node]
         for node in self.node_list:
             if re.match(Glossary.AMR_ARG, node.relation.lower()):
                 args_list.append(node)
         return args_list
 
-    def get_node_id(self):
+    def get_node_id(self) -> int:
         return self.__node_id
 
-    def get_nodes_with_parent_list_not_empty(self):
+    def get_nodes_with_parent_list_not_empty(self) -> list:
         snt = []
         for node in self.node_list:
             if len(node.parent_list) != 0:
@@ -198,7 +222,10 @@ class Node:
         return snt
 
     def get_children(self, relation):
-        node_list = []
+        """
+        :rtype: list[Node]
+        """
+        node_list = [Node]
         for node in self.node_list:
             if node.relation == relation:
                 node_list.append(node)
@@ -208,8 +235,18 @@ class Node:
         if isinstance(node_list, list):
             self.node_list += node_list
 
-    def set_status(self, status):
+    def set_status(self, status: Glossary.NodeStatus):
         self.status = status
+
+    def get_ops(self):
+        """
+        :rtype: list[Node]
+        """
+        ops_list = []
+        for node in self.node_list:
+            if re.match(Glossary.AMR_OP, node.relation):
+                ops_list.append(node)
+        return ops_list
 
 
 class Propbank:
@@ -224,6 +261,9 @@ class Propbank:
 
     @staticmethod
     def get_propbank():
+        """
+        :rtype: Propbank
+        """
         if Propbank.__propbank is None:
             Propbank.__propbank = Propbank()
         return Propbank.__propbank
@@ -241,19 +281,39 @@ class Propbank:
                 rows.append(row)
         return [header, rows]
 
-    def frame_find(self, word, frame_field):
+    def frame_find(self, word, frame_field: Glossary.PropbankFrameFields) -> list:
         frame_list = []
         for frame in self.frame_matrix[1]:
             if word == frame[frame_field.value]:
                 frame_list.append(frame)
         return frame_list
 
-    def role_find(self, word, role_field, value, role_field_2):
+    def role_find(self, word, role_field, value, role_field_2) -> list:
         role_list = []
         for role in self.role_matrix[1]:
             if word == role[role_field.value] and value == role[role_field_2.value]:
                 role_list.append(role)
         return role_list
+
+    def list_find(self, word, args) -> list:
+        result = []
+        num = len(args)
+        cfr = 0
+        if Glossary.PB_ROLESET not in word:
+            word = Glossary.PB_ROLESET + word
+        node_list = self.frame_find(word, Glossary.PropbankRoleFields.PB_Frame)
+        for node in args:
+            assert isinstance(node, Node)
+            r = Glossary.PB_SCHEMA + node.relation[1:]
+            for l1 in node_list:
+                if l1[Glossary.PropbankRoleFields.PB_ARG.value] == r:
+                    cfr += 1
+                    result += self.role_find(r, Glossary.PropbankRoleFields.PB_ARG, word,
+                                             Glossary.PropbankRoleFields.PB_Frame)
+                    break
+        if cfr >= num:
+            return result
+        return None
 
 
 class Parser:
@@ -495,7 +555,7 @@ class Parser:
             root.node_list[i] = self.check_missing_instances(node)
         return root
 
-    def multi_sentence(self, root):
+    def multi_sentence(self, root) -> Node:
         if (isinstance(root, Node) and root.get_instance() is not None
                 and root.get_instance().var == Glossary.AMR_MULTI_SENTENCE):
             sentences = root.get_snt()
@@ -511,7 +571,7 @@ class Parser:
             root.node_list[i] = self.multi_sentence(node)
         return root
 
-    def logic_triples_integration(self, root):
+    def logic_triples_integration(self, root) -> Node:
         if not isinstance(root, Node):
             return root
 
@@ -562,14 +622,13 @@ class Parser:
         return root
 
     def set_equals(self, root):
-        # TODO
-        return root
+        for node in self.get_equals(root):
+            node.var = root.var
 
-    def get_equals(self, root):
-        # TODO
-        return []
+    def get_equals(self, root) -> list[Node]:
+        return [node for node in self.nodes if node.__eq__(root)]
 
-    def dom_verify(self, root):
+    def dom_verify(self, root: Node) -> Node:
         dom = root.get_child(Glossary.AMR_DOMAIN)
         if dom is not None:
             instance = root.get_instance()
@@ -602,12 +661,49 @@ class Parser:
             root.node_list[i] = self.dom_verify(node)
         return root
 
-    def control_ops(self, root):
-        # TODO
+    def control_ops(self, root: Node) -> Node:
+        if not isinstance(root, Node):
+            return root
+        ins = root.get_instance()
+
+        if isinstance(ins, Node) and (ins.var != Glossary.OP_NAME or ins.var != Glossary.FRED_MULTIPLE):
+            return root
+        ops_list = root.get_ops()
+        if len(ops_list) > 0:
+            for node in ops_list:
+                assert isinstance(node, Node)
+                if node.get_instance() is None:
+                    if re.match(Glossary.NN_INTEGER, node.var):
+                        node.relation = Glossary.DUL_HAS_DATA_VALUE
+                        if (re.match(Glossary.NN_INTEGER, node.var)
+                                and int(node.var) == 1
+                                and root.get_child(Glossary.QUANT_HAS_QUANTIFIER) is None
+                                and (ins is None or ins.var != Glossary.AMR_VALUE_INTERVAL)):
+                            root.add(Node(Glossary.QUANT + Glossary.FRED_MULTIPLE, Glossary.QUANT_HAS_QUANTIFIER,
+                                          Glossary.NodeStatus.OK))
+                    else:
+                        node.relation = Glossary.DUL_ASSOCIATED_WITH
+        for i, node in enumerate(root.node_list):
+            root.node_list[i] = self.control_ops(node)
         return root
 
-    def li_verify(self, root):
-        # TODO
+    def li_verify(self, root) -> Node:
+        if isinstance(root, Node) and root.relation == Glossary.AMR_LI:
+            root.relation = Glossary.TOP
+            var = root.parent.var
+            new_instance = Node(Glossary.REIFI_HAVE_LI, Glossary.INSTANCE)
+            self.nodes.append(new_instance)
+            arg1 = Node(root.var, Glossary.AMR_ARG1)
+            self.nodes.append(arg1)
+            arg2 = Node(var, Glossary.AMR_ARG2)
+            self.nodes.append(arg2)
+            arg2.make_equals(root.parent)
+            root.var = "li_" + root.get_node_id()
+            root.add(new_instance)
+            root.add(arg1)
+            root.add(arg2)
+        for i, node in enumerate(root.node_list):
+            root.node_list[i] = self.li_verify(node)
         return root
 
     def inverse_checker(self, root):
@@ -698,7 +794,7 @@ class Parser:
                 contains = mod_ins in Glossary.ADJECTIVE
                 demonstratives = " " + mod_ins + " " in Glossary.DEMONSTRATIVES
                 if contains:
-                    mod_node.relation = Glossary.DUL_HAS_QUALITY;
+                    mod_node.relation = Glossary.DUL_HAS_QUALITY
                     mod_node.var = Glossary.FRED + mod_ins.capitalize()
                     self.remove_instance(mod_node)
                 elif demonstratives:
@@ -813,20 +909,32 @@ class Parser:
         if root.get_instance() is not None:
             root.node_list.remove(root.get_instance())
 
-    def is_verb(self, var):
-        # TODO
-        return False
+    @staticmethod
+    def is_verb(var, node_list=None):
+        prb = Propbank.get_propbank()
+        if node_list is None and isinstance(var, str):
+            result = prb.frame_find(Glossary.PB_ROLESET + var, Glossary.PropbankFrameFields.PB_Frame)
+            return result is not None and len(result) > 0
+        elif isinstance(var, str) and isinstance(node_list, list):
+            result = prb.list_find(var, node_list)
+            return result is not None and len(result) > 0
 
-    def occurrence(self, root_ins):
-        # TODO
-        pass
+    def occurrence(self, word):
+        occurrence_num = 1
+        for couple in self.couples:
+            if word == couple.get_word():
+                occurrence_num += couple.get_occurrence()
+                couple.set_occurrence(occurrence_num)
+        if occurrence_num == 1:
+            self.couples.append(Couple(1, word))
+        return occurrence_num
 
 
 if __name__ == '__main__':
     p = Parser.get_parser()
-    # nodo = p.parse('''(c / charge-05 :ARG1 (h / he) :ARG2 (a / and :op1 (i / intoxicate-01 :ARG1 h
-    # :location (p / public)) :op2 (r / resist-01 :ARG0 h :ARG1 (a2 / arrest-01 :ARG1 h))))''')
-    nodo = p.parse("(z0 / lawyer :domain (z1 / man))")
+    nodo = p.parse('''(c / charge-05 :ARG1 (h / he) :ARG2 (a / and :op1 (i / intoxicate-01 :ARG1 h
+    :location (p / public)) :op2 (r / resist-01 :ARG0 h :ARG1 (a2 / arrest-01 :ARG1 h))))''')
+    # nodo = p.parse("(z0 / lawyer :domain (z1 / man))")
     print(nodo.to_string())
     # print(nodo)
     # print(p.check(nodo))
