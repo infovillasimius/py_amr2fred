@@ -129,7 +129,7 @@ class Node:
         """
         :rtype: list[Node]
         """
-        nodes = [Node]
+        nodes: list[Node] = []
         for node in self.node_list:
             if (re.search(Glossary.AMR_INVERSE, node.relation) and
                     node.relation != Glossary.AMR_PREP_ON_BEHALF_OF and
@@ -170,8 +170,6 @@ class Node:
         if node is None and relation is not None and parser_nodes_copy is None:
             new_node = Node(self.var, relation, self.status)
             new_node.__node_id = self.__node_id
-            # for n in self.node_list:
-            #     new_node.add(n)
             return new_node
 
         if node is not None and relation is not None and parser_nodes_copy is None:
@@ -334,11 +332,14 @@ class Parser:
 
     @staticmethod
     def get_parser():
+        """
+        :rtype: Parser
+        """
         if Parser.__parser is None:
             Parser.__parser = Parser()
         return Parser.__parser
 
-    def string2array(self, amr):
+    def string2array(self, amr: str) -> list[str]:
         word_list = []
         amr = self.normalize(amr)
         # word_list_2 = [x if Glossary.QUOTE not in x else Glossary.LITERAL + x.replace(Glossary.QUOTE, "") for x in
@@ -378,7 +379,7 @@ class Parser:
         return word_list
 
     @staticmethod
-    def normalize(amr):
+    def normalize(amr: str) -> str:
         re.sub("\r\n|\r|\n", " ", amr)
         amr = amr.strip()
         amr = amr.replace("(", " ( ")
@@ -390,11 +391,10 @@ class Parser:
         return amr
 
     @staticmethod
-    def strip_accents(old):
-        new = unidecode(old)
-        return new
+    def strip_accents(amr: str) -> str:
+        return unidecode(amr)
 
-    def get_nodes(self, relation, amr_list):
+    def get_nodes(self, relation, amr_list) -> Node:
         if amr_list is None or len(amr_list) == 0:
             return None
         root = Node(var=amr_list[1], relation=relation)
@@ -463,17 +463,17 @@ class Parser:
             return None
         return root
 
-    def check(self, root_node):
-        if isinstance(root_node, Node):
-            if root_node.status != Glossary.NodeStatus.OK:
+    def check(self, root: Node) -> Node:
+        if isinstance(root, Node):
+            if root.status != Glossary.NodeStatus.OK:
                 return None
-            for i, node in enumerate(root_node.node_list):
+            for i, node in enumerate(root.node_list):
                 if node.status != Glossary.NodeStatus.OK:
                     self.removed.append(node)
-                    root_node.node_list.pop(i)
+                    root.node_list.pop(i)
                 else:
-                    root_node.node_list[i] = self.check(node)
-            return root_node
+                    root.node_list[i] = self.check(node)
+        return root
 
     def parse(self, amr):
         amr = self.strip_accents(amr)
@@ -508,7 +508,7 @@ class Parser:
         root = self.logic_triples_integration(root)
         return root
 
-    def fred_translate(self, root):
+    def fred_translate(self, root: Node) -> Node:
         if not isinstance(root, Node):
             return None
         elif len(root.node_list) == 0:
@@ -546,7 +546,7 @@ class Parser:
 
         return root
 
-    def check_missing_instances(self, root):
+    def check_missing_instances(self, root: Node) -> Node:
         if isinstance(root, Node) and root.relation != Glossary.INSTANCE and root.get_instance() is None:
             for n in self.nodes:
                 if n.var == root.var and n.get_instance() is not None:
@@ -555,7 +555,7 @@ class Parser:
             root.node_list[i] = self.check_missing_instances(node)
         return root
 
-    def multi_sentence(self, root) -> Node:
+    def multi_sentence(self, root: Node) -> Node:
         if (isinstance(root, Node) and root.get_instance() is not None
                 and root.get_instance().var == Glossary.AMR_MULTI_SENTENCE):
             sentences = root.get_snt()
@@ -571,7 +571,7 @@ class Parser:
             root.node_list[i] = self.multi_sentence(node)
         return root
 
-    def logic_triples_integration(self, root) -> Node:
+    def logic_triples_integration(self, root: Node) -> Node:
         if not isinstance(root, Node):
             return root
 
@@ -621,11 +621,11 @@ class Parser:
 
         return root
 
-    def set_equals(self, root):
+    def set_equals(self, root: Node):
         for node in self.get_equals(root):
             node.var = root.var
 
-    def get_equals(self, root) -> list[Node]:
+    def get_equals(self, root: Node) -> list[Node]:
         return [node for node in self.nodes if node.__eq__(root)]
 
     def dom_verify(self, root: Node) -> Node:
@@ -687,7 +687,7 @@ class Parser:
             root.node_list[i] = self.control_ops(node)
         return root
 
-    def li_verify(self, root) -> Node:
+    def li_verify(self, root: Node) -> Node:
         if isinstance(root, Node) and root.relation == Glossary.AMR_LI:
             root.relation = Glossary.TOP
             var = root.parent.var
@@ -706,11 +706,36 @@ class Parser:
             root.node_list[i] = self.li_verify(node)
         return root
 
-    def inverse_checker(self, root):
-        # TODO
+    def inverse_checker(self, root: Node) -> Node:
+        if not isinstance(root, Node):
+            return root
+
+        inv_nodes = root.get_inverses()
+
+        if len(inv_nodes) == 0:
+            return root
+
+        if root.relation == Glossary.TOP and len(inv_nodes) == 1 and root.get_node_id() == 0:
+            print(inv_nodes[0] is None)
+            n = root.get_inverse()
+            root.node_list.remove(n)
+            root.relation = n.relation[0:-3]
+            n.add(root)
+            n.relation = Glossary.TOP
+            return self.inverse_checker(n)
+        else:
+            for node in inv_nodes:
+                new_node = root.get_copy(node.relation[0:-3])
+                self.nodes.append(new_node)
+                node.relation = Glossary.TOP
+                node.add(new_node)
+
+        for i, node in enumerate(root.node_list):
+            root.node_list[i] = self.inverse_checker(node)
+
         return root
 
-    def mod_verify(self, root):
+    def mod_verify(self, root: Node) -> Node:
         if not isinstance(root, Node):
             return root
         flag = True
@@ -812,11 +837,11 @@ class Parser:
 
         return root
 
-    def list_elaboration(self, root):
+    def list_elaboration(self, root: Node) -> Node:
         # TODO
         return root
 
-    def add_parent_list(self, root):
+    def add_parent_list(self, root: Node) -> Node:
         to_add = root.get_nodes_with_parent_list_not_empty()
         if len(to_add) != 0:
             for node in to_add:
@@ -832,11 +857,59 @@ class Parser:
             root.node_list[i] = self.add_parent_list(node)
         return root
 
-    def instance_elaboration(self, root):
-        # TODO
+    def instance_elaboration(self, root: Node) -> Node:
+        if root.status == Glossary.NodeStatus.OK and root.relation.startswith(
+                Glossary.AMR_RELATION_BEGIN) and root.relation != Glossary.TOP:
+            root.set_status(Glossary.NodeStatus.AMR)
+            return root
+
+        if root.status != Glossary.NodeStatus.OK and root.relation.startswith(
+                Glossary.AMR_RELATION_BEGIN) and root.relation != Glossary.TOP:
+            root.set_status(Glossary.NodeStatus.OK)
+
+        instance = root.get_instance()
+        if isinstance(instance, Node):
+            if len(instance.var) > 3 and re.match(Glossary.AMR_VERB, instance.var[-3:]):
+                if self.is_verb(instance.var):
+                    root.node_type = Glossary.NodeType.VERB
+                    self.topic_flag = False
+                    instance.add(Node(Glossary.DUL_EVENT, Glossary.RDFS_SUBCLASS_OF, Glossary.NodeStatus.OK))
+                if root.status == Glossary.NodeStatus.OK:
+                    root.node_type = Glossary.NodeType.VERB
+                    self.topic_flag = False
+
+                root.var = Glossary.FRED + instance.var[0:-3] + "_" + str(self.occurrence(instance.var[0:-3]))
+                instance.relation = Glossary.RDF_TYPE
+                root.verb = Glossary.ID + instance.var.replace('-', '.')
+                self.args(root)
+                instance.var = Glossary.PB_ROLESET + instance.var
+
+                if not instance.relation.startswith(Glossary.AMR_RELATION_BEGIN):
+                    instance.status = Glossary.NodeStatus.OK
+                else:
+                    instance.status = Glossary.NodeStatus.AMR
+
+                if not root.relation.startswith(Glossary.AMR_RELATION_BEGIN):
+                    root.status = Glossary.NodeStatus.OK
+                else:
+                    root.status = Glossary.NodeStatus.AMR
+            else:
+                root = self.other_instance_elaboration(root)
+                if not root.relation.startswith(Glossary.AMR_RELATION_BEGIN):
+                    root.status = Glossary.NodeStatus.OK
+                else:
+                    root.status = Glossary.NodeStatus.AMR
+
+            for node in self.nodes:
+                if root.__eq__(node):
+                    node.var = root.var
+
+        for i, node in enumerate(root.node_list):
+            root.node_list[i] = self.instance_elaboration(node)
+
         return root
 
-    def verbs_elaboration(self, root):
+    def verbs_elaboration(self, root: Node) -> Node:
         if not isinstance(root, Node):
             return None
         lemma = root.verb
@@ -882,35 +955,35 @@ class Parser:
             root.node_list[i] = self.verbs_elaboration(node)
         return root
 
-    def topic(self, root):
+    def topic(self, root: Node) -> Node:
         if self.topic_flag:
             root.add(Node(Glossary.FRED_TOPIC, Glossary.DUL_HAS_QUALITY, Glossary.NodeStatus.OK))
         return root
 
-    def residual(self, root):
+    def residual(self, root: Node) -> Node:
         # TODO
         return root
 
-    def get_instance(self, node_id):
+    def get_instance(self, node_id) -> Node:
         for node in self.nodes_copy:
             if node.get_node_id() == node_id and node.get_instance() is not None:
                 return node.get_instance()
         return None
 
-    def treat_instance(self, root):
+    def treat_instance(self, root: Node):
         for node in self.get_equals(root):
             node.var = root.var
         if root.get_instance() is not None:
             root.get_instance().status = Glossary.NodeStatus.REMOVE
 
-    def remove_instance(self, root):
+    def remove_instance(self, root: Node):
         for node in self.get_equals(root):
             node.var = root.var
         if root.get_instance() is not None:
             root.node_list.remove(root.get_instance())
 
     @staticmethod
-    def is_verb(var, node_list=None):
+    def is_verb(var, node_list=None) -> bool:
         prb = Propbank.get_propbank()
         if node_list is None and isinstance(var, str):
             result = prb.frame_find(Glossary.PB_ROLESET + var, Glossary.PropbankFrameFields.PB_Frame)
@@ -919,7 +992,7 @@ class Parser:
             result = prb.list_find(var, node_list)
             return result is not None and len(result) > 0
 
-    def occurrence(self, word):
+    def occurrence(self, word) -> int:
         occurrence_num = 1
         for couple in self.couples:
             if word == couple.get_word():
@@ -928,6 +1001,14 @@ class Parser:
         if occurrence_num == 1:
             self.couples.append(Couple(1, word))
         return occurrence_num
+
+    def args(self, root: Node):
+        # TODO
+        pass
+
+    def other_instance_elaboration(self, root: Node) -> Node:
+        # TODO
+        return root
 
 
 if __name__ == '__main__':
