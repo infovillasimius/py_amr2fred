@@ -1,6 +1,7 @@
-import rdflib
-from enum import Enum
 import json
+from enum import Enum
+
+import rdflib
 
 
 def read_adjectives():
@@ -327,6 +328,7 @@ class Glossary:
     FRED_EVEN = FRED + "Even"
     FRED_WHEN = FRED + "when"
     FRED_INCLUDE = FRED + "include"
+    FRED_AS_IF = FRED + "as-if"
 
     AMR_DOMAIN = ":domain"
     AMR_IMPERATIVE = "imperative"
@@ -681,3 +683,6 @@ class Glossary:
                        AMR_SOURCE, AMR_SUB_EVENT_OF, AMR_SUBSET, AMR_SUBSET_OF, AMR_TIME, AMR_TOPIC, AMR_AGE]
 
     FS_SCHEMA_SEMANTIC_ROLE = FS_SCHEMA + "SemanticRole"
+
+    AGE_01 = "age-01"
+    NEW_VAR = "newVar"

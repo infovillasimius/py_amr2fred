@@ -35,9 +35,9 @@ class Node:
         self.relation: str = relation
         self.label: str = ""
         self.var: str = var
-        self.node_list: list = []
+        self.node_list: list[Node] = []
         self.parent: Node = None
-        self.parent_list: list = []
+        self.parent_list: list[Node] = []
         self.visibility: bool = visibility
         self.prefix: bool = False
         self.status: Glossary.NodeStatus = status
@@ -192,7 +192,7 @@ class Node:
         """
         :rtype: list[Node]
         """
-        snt = [Node]
+        snt: list[Node] = []
         for node in self.node_list:
             if node.relation == Glossary.AMR_SENTENCE:
                 snt.append(node)
@@ -203,7 +203,7 @@ class Node:
         """
         :rtype: list[Node]
         """
-        args_list = [Node]
+        args_list: list[Node] = []
         for node in self.node_list:
             if re.match(Glossary.AMR_ARG, node.relation.lower()):
                 args_list.append(node)
@@ -223,7 +223,7 @@ class Node:
         """
         :rtype: list[Node]
         """
-        node_list = [Node]
+        node_list: list[Node] = []
         for node in self.node_list:
             if node.relation == relation:
                 node_list.append(node)
@@ -231,6 +231,8 @@ class Node:
 
     def add_all(self, node_list):
         if isinstance(node_list, list):
+            for node in node_list:
+                node.parent = self
             self.node_list += node_list
 
     def set_status(self, status: Glossary.NodeStatus):
@@ -240,11 +242,30 @@ class Node:
         """
         :rtype: list[Node]
         """
-        ops_list = []
+        ops_list: list[Node] = []
         for node in self.node_list:
             if re.match(Glossary.AMR_OP, node.relation):
                 ops_list.append(node)
         return ops_list
+
+    def get_poss(self):
+        """
+        :rtype: Node
+        """
+        for node in self.node_list:
+            if re.match(Glossary.AMR_POSS, node.relation):
+                return node
+
+    def substitute(self, node):
+        if isinstance(node, Node):
+            self.var = node.var
+            self.relation = node.relation
+            self.__node_id = node.__node_id
+            self.node_list = []
+            self.add_all(node.node_list)
+            self.status = node.status
+            self.node_type = node.node_type
+            self.verb = node.verb
 
 
 class Propbank:
@@ -381,6 +402,7 @@ class Parser:
     @staticmethod
     def normalize(amr: str) -> str:
         re.sub("\r\n|\r|\n", " ", amr)
+        amr = amr.replace("\r", " ").replace("\n", " ")
         amr = amr.strip()
         amr = amr.replace("(", " ( ")
         amr = amr.replace(")", " ) ")
@@ -633,11 +655,11 @@ class Parser:
         if dom is not None:
             instance = root.get_instance()
             if instance is None:
-                instance = self.get_instance(root.get_node_id())
+                instance = self.get_instance_alt(root.get_node_id())
             self.topic_flag = False
             dom.relation = Glossary.TOP
-            if dom.get_instance() is None and self.get_instance(dom.get_node_id()) is not None:
-                n_var = self.get_instance(dom.get_node_id())
+            if dom.get_instance() is None and self.get_instance_alt(dom.get_node_id()) is not None:
+                n_var = self.get_instance_alt(dom.get_node_id())
             elif dom.get_instance() is not None:
                 n_var = dom.get_instance().var
             else:
@@ -709,14 +731,10 @@ class Parser:
     def inverse_checker(self, root: Node) -> Node:
         if not isinstance(root, Node):
             return root
-
         inv_nodes = root.get_inverses()
-
         if len(inv_nodes) == 0:
             return root
-
         if root.relation == Glossary.TOP and len(inv_nodes) == 1 and root.get_node_id() == 0:
-            print(inv_nodes[0] is None)
             n = root.get_inverse()
             root.node_list.remove(n)
             root.relation = n.relation[0:-3]
@@ -729,17 +747,15 @@ class Parser:
                 self.nodes.append(new_node)
                 node.relation = Glossary.TOP
                 node.add(new_node)
-
         for i, node in enumerate(root.node_list):
             root.node_list[i] = self.inverse_checker(node)
-
         return root
 
     def mod_verify(self, root: Node) -> Node:
         if not isinstance(root, Node):
             return root
         flag = True
-        instance = self.get_instance(root.get_node_id())
+        instance = self.get_instance_alt(root.get_node_id())
         if isinstance(instance, Node) and len(instance.var) > 3 and re.fullmatch(Glossary.AMR_VERB, instance.var[3:]):
             flag = False
 
@@ -750,8 +766,8 @@ class Parser:
             if isinstance(mod_node, Node) and flag:
                 if isinstance(mod_node.get_instance(), Node):
                     mod_instance = mod_node.get_instance()
-                elif isinstance(self.get_instance(mod_node.get_node_id()), Node):
-                    mod_instance = self.get_instance(mod_node.get_node_id())
+                elif isinstance(self.get_instance_alt(mod_node.get_node_id()), Node):
+                    mod_instance = self.get_instance_alt(mod_node.get_node_id())
                 else:
                     mod_instance = None
                 if (mod_node.get_child(Glossary.AMR_DEGREE) is not None
@@ -771,7 +787,7 @@ class Parser:
                     if mod_node.get_instance() is not None:
                         mod_ins = mod_node.get_instance().var
                     else:
-                        mod_ins = self.get_instance(mod_node.get_node_id()).var
+                        mod_ins = self.get_instance_alt(mod_node.get_node_id()).var
                     contains = mod_ins in Glossary.ADJECTIVE
                     demonstratives = " " + mod_ins + " " in Glossary.DEMONSTRATIVES
                     if contains:
@@ -811,11 +827,10 @@ class Parser:
                                               Glossary.RDFS_SUBCLASS_OF))
                     mod_node.set_status(Glossary.NodeStatus.OK)
             elif mod_node is not None and not flag:
-                pass
                 if mod_node.get_instance() is not None:
                     mod_ins = mod_node.get_instance().var
                 else:
-                    mod_ins = self.get_instance(mod_node.get_node_id()).var
+                    mod_ins = self.get_instance_alt(mod_node.get_node_id()).var
                 contains = mod_ins in Glossary.ADJECTIVE
                 demonstratives = " " + mod_ins + " " in Glossary.DEMONSTRATIVES
                 if contains:
@@ -838,7 +853,327 @@ class Parser:
         return root
 
     def list_elaboration(self, root: Node) -> Node:
-        # TODO
+        if not isinstance(root, Node) or len(root.node_list) == 0:
+            return root
+
+        root = self.root_elaboration(root)
+        root = self.date_entity(root)
+        root = self.prep_control(root)
+
+        for i, node in enumerate(root.node_list):
+            root.node_list[i] = self.prep_control(node)
+
+            if node.relation == Glossary.AMR_WIKIDATA:
+                if node.var == Glossary.AMR_MINUS:
+                    node.status = Glossary.NodeStatus.REMOVE
+                else:
+                    node.relation = Glossary.OWL_SAME_AS
+                    node.var = Glossary.WIKIDATA + node.var
+                    node.status = Glossary.NodeStatus.OK
+
+            if node.relation == Glossary.PREP_SUBSTITUTION:
+                node.status = Glossary.NodeStatus.REMOVE
+                self.to_add += node.node_list
+
+            if node.relation == Glossary.AMR_POLARITY_OF:
+                node.relation = Glossary.AMR + Glossary.AMR_POLARITY_OF[1:]
+
+            if (node.relation == Glossary.AMR_DOMAIN and node.get_instance() is not None
+                    and " " + node.get_instance() + " " in Glossary.DEMONSTRATIVES):
+                self.topic_flag = False
+                node.relation = Glossary.QUANT_HAS_DETERMINER
+                node.var = Glossary.FRED + node.get_instance().var.capitalize()
+                self.remove_instance(node)
+                node.status = Glossary.NodeStatus.OK
+
+            node_instance = node.get_instance()
+
+            # "OR" and "AND" cases with ":OPS"
+            if node_instance is not None and (node_instance.var == Glossary.OR or node_instance.var == Glossary.AND):
+                if node_instance.var == Glossary.AND:
+                    node_instance.var = Glossary.CONJUNCT
+                else:
+                    node_instance.var = Glossary.DISJUNCT
+                ops = node.get_ops()
+                for n in ops:
+                    n.relation = Glossary.DUL_HAS_MEMBER
+
+            # "date-interval" case with ":op" list
+            if node_instance is not None and node_instance.var == Glossary.AMR_DATE_INTERVAL:
+                ops = node.get_ops()
+                for n in ops:
+                    n.relation = Glossary.DUL_HAS_MEMBER
+
+            # special cases with personal pronouns and demonstrative adjectives
+            if node.var in Glossary.PERSON:
+                node.var = Glossary.FRED_PERSON
+                # self.set_equals(root)
+                root.prefix = True
+
+            if node.relation == Glossary.AMR_NAME:
+                root.prefix = True
+                if root.get_poss() is not None and root.get_instance() is not None:
+                    root.get_poss().relation = root.get_instance().var.replace(Glossary.FRED, "") + Glossary.OF
+
+            if (node.relation == Glossary.AMR_NAME and node_instance is not None
+                    and node_instance.var == Glossary.OP_NAME
+                    and len(node.get_ops()) > 0
+                    and not self.check_for_amr_instances(root)):
+                ops = node.get_ops()
+                name = ""
+                for n in ops:
+                    name += Glossary.OP_JOINER + n.var
+                    node.node_list.remove(n)
+                name = Glossary.LITERAL + name[1:].replace(Glossary.LITERAL, "")
+                node.var = name
+                node.relation = Glossary.SCHEMA + Glossary.OP_NAME
+                self.treat_instance(node)
+            elif (node.relation == Glossary.AMR_NAME and node_instance is not None
+                  and node_instance.var == Glossary.OP_NAME
+                  and len(node.get_ops()) > 0
+                  and self.check_for_amr_instances(root)):
+                ops = node.get_ops()
+                name = ""
+                for n in ops:
+                    name += Glossary.OP_JOINER + n.var
+                    node.node_list.remove(n)
+                name = Glossary.LITERAL + name[1:].replace(Glossary.LITERAL, "")
+                node.var = name
+                node.relation = Glossary.SCHEMA + Glossary.OP_NAME
+                self.treat_instance(node)
+                self.remove_instance(node)
+            elif (node_instance is not None and node_instance.var == Glossary.OP_NAME
+                  and len(node.get_ops()) > 0
+                  and not self.check_for_amr_instances(root)):
+                ops = node.get_ops()
+                name = ""
+                for n in ops:
+                    name += Glossary.OP_JOINER + n.var
+                    node.node_list.remove(n)
+                name = Glossary.LITERAL + name[1:].replace(Glossary.LITERAL, "")
+                node.var = name
+                self.treat_instance(node)
+
+            if node.relation == Glossary.AMR_WIKI:
+                if node.var == Glossary.AMR_MINUS:
+                    node.status = Glossary.NodeStatus.REMOVE
+                else:
+                    node.relation = Glossary.OWL_SAME_AS
+                    node.var = Glossary.DBPEDIA + node.var
+                    node.status = Glossary.NodeStatus.OK
+
+            elif node.relation == Glossary.AMR_MODE and (node.var == Glossary.AMR_IMPERATIVE
+                                                         or node.var == Glossary.AMR_EXPRESSIVE
+                                                         or node.var == Glossary.AMR_INTERROGATIVE):
+                node.relation = Glossary.AMR + node.relation[1:]
+                node.var = Glossary.AMR + node.var.replace(":", "")
+
+            elif node.relation == Glossary.AMR_POLITE:
+                if node.var != Glossary.AMR_PLUS:
+                    node.add(Node(Glossary.BOXING_FALSE, Glossary.BOXING_HAS_TRUTH_VALUE, Glossary.NodeStatus.OK))
+                node.var = Glossary.AMR + node.relation[1:]
+                node.relation = Glossary.BOXING_HAS_MODALITY
+                node.add(Node(Glossary.DUL_HAS_QUALITY, Glossary.RDFS_SUB_PROPERTY_OF, Glossary.NodeStatus.OK))
+
+            elif (node.relation == Glossary.AMR_POLARITY
+                  and node_instance is not None
+                  and node_instance.var == Glossary.AMR_UNKNOWN):
+                node.relation = Glossary.BOXING_HAS_TRUTH_VALUE
+                node.var = Glossary.BOXING_UNKNOWN
+                self.remove_instance(node)
+
+            elif node_instance is not None and node_instance.var == Glossary.AMR_UNKNOWN:
+                node.var = Glossary.OWL_THING
+                self.remove_instance(node)
+                if node.relation == Glossary.AMR_QUANT:
+                    node.relation = Glossary.AMR + Glossary.AMR_QUANT[1:]
+
+            elif " " + node.var + " " in Glossary.MALE:
+                node.var = Glossary.FRED_MALE
+                self.set_equals(root)
+
+            elif " " + node.var + " " in Glossary.FEMALE:
+                node.var = Glossary.FRED_FEMALE
+                self.set_equals(root)
+
+            elif " " + node.var + " " in Glossary.THING:
+                node.var = Glossary.FRED_NEUTER
+                node.add(Node(Glossary.OWL_THING, Glossary.RDF_TYPE, Glossary.NodeStatus.OK))
+                self.set_equals(root)
+                node.set_status(Glossary.NodeStatus.OK)
+
+            elif node.relation == Glossary.AMR_POSS and self.get_instance_alt(root.get_node_id()) is not None:
+                node.relation = (Glossary.FRED
+                                 + self.get_instance_alt(root.get_node_id()).var.replace(Glossary.FRED, "")
+                                 + Glossary.OF)
+                node.set_status(Glossary.NodeStatus.OK)
+
+            elif ((node.relation == Glossary.AMR_QUANT or node.relation == Glossary.AMR_FREQUENCY)
+                  and re.match(Glossary.NN_INTEGER, node.var) and node_instance is None):
+                node.relation = Glossary.DUL_HAS_DATA_VALUE
+                if ((re.match(Glossary.NN_INTEGER, node.var) and not int(node.var) == 1)
+                        or not re.match(Glossary.NN_INTEGER, node.var)):
+                    self.to_add.append(Node(Glossary.QUANT + Glossary.FRED_MULTIPLE,
+                                            Glossary.QUANT_HAS_QUANTIFIER,
+                                            Glossary.NodeStatus.OK))
+                node.set_status(Glossary.NodeStatus.OK)
+
+            elif node.relation == (Glossary.AMR_QUANT and node_instance is not None
+                                   and re.match(Glossary.AMR_QUANTITY, node_instance.var)):
+                ops = node.get_ops()
+                for n in ops:
+                    node.node_list.remove(n)
+                    n.relation = Glossary.DUL_HAS_DATA_VALUE
+                    self.to_add.append(n)
+                    n.set_status(Glossary.NodeStatus.OK)
+                node.relation = Glossary.QUANT_HAS_QUANTIFIER
+                if node_instance.var == Glossary.FRED_MULTIPLE:
+                    node.var = Glossary.QUANT + Glossary.FRED_MULTIPLE
+                    self.remove_instance(node)
+                node.set_status(Glossary.NodeStatus.OK)
+
+            elif node.relation == Glossary.AMR_QUANT_OF and node_instance is not None:
+                node.relation = Glossary.FRED + self.get_instance_alt(root.get_node_id()).var + Glossary.OF
+                node.set_status(Glossary.NodeStatus.OK)
+
+            elif node.relation == Glossary.AMR_AGE and root.get_instance() is not None and node_instance is None:
+                age = node.var
+                node.relation = Glossary.TOP
+                node.var = Glossary.NEW_VAR + self.occurrence(Glossary.NEW_VAR)
+                node.add(Node(Glossary.AGE_01, Glossary.INSTANCE))
+                n1 = root.get_copy(relation=Glossary.AMR_ARG1)
+                self.nodes.append(n1)
+                node.add(n1)
+                node.add(Node(age, Glossary.AMR_ARG2))
+                root.node_list[i] = self.list_elaboration(node)
+
+            elif node.relation == Glossary.AMR_AGE and root.get_instance() is not None and node_instance is not None:
+                node.relation = Glossary.TOP
+                n1 = root.get_copy(relation=Glossary.AMR_ARG1)
+                self.nodes.append(n1)
+                new_age_node = Node(Glossary.NEW_VAR + self.occurrence(Glossary.NEW_VAR), Glossary.AMR_ARG2)
+                self.nodes.append(new_age_node)
+                new_age_node.add_all(node.node_list)
+                node.node_list = []
+                node.add(n1)
+                node.var = Glossary.NEW_VAR + self.occurrence(Glossary.NEW_VAR)
+                node.add(Node(Glossary.AGE_01, Glossary.INSTANCE))
+                node.add(new_age_node)
+                root.node_list[i] = self.list_elaboration(node)
+
+            elif node.relation == (Glossary.AMR_DEGREE and node_instance is not None
+                                   and not self.is_verb(node_instance.var)):
+                node.var = Glossary.FRED + node_instance.var.capitalize()
+                self.remove_instance(node)
+
+            elif node.relation == (Glossary.AMR_MANNER and node_instance is not None
+                                   and not self.is_verb(node_instance.var)):
+                if re.match(Glossary.AMR_VERB2, node_instance.var) or len(self.manner_adverb(node_instance.var)) > 0:
+                    if (re.match(Glossary.AMR_VERB2, node_instance.var)
+                        and len(self.manner_adverb(node_instance.var[0:-3]))) > 0:
+                        node.var = Glossary.FRED + self.manner_adverb(node_instance.var[0:-3]).capitalize()
+                    elif len(self.manner_adverb(node_instance.var)) > 0:
+                        node.var = Glossary.FRED + self.manner_adverb(node_instance.var).capitalize()
+                    else:
+                        node.var = Glossary.FRED + node_instance.var[0:-3].capitalize()
+                    self.remove_instance(node)
+                else:
+                    node.relation = Glossary.AMR + Glossary.AMR_MANNER[1:]
+
+            elif (node.relation == Glossary.AMR_MANNER and node_instance is not None and root.get_instance() is not None
+                  and self.is_verb(node_instance.var)):
+                node.relation = Glossary.FRED + root.get_instance()[:-3] + Glossary.BY
+
+            elif node.relation.startswith(Glossary.AMR_PREP):
+                node.relation = node.relation.replace(Glossary.AMR_PREP, Glossary.FRED)
+
+            elif (node.relation == Glossary.AMR_PART_OF or node.relation == Glossary.AMR_CONSIST_OF
+                  and node_instance is not None):
+                node.relation = node.relation.replace(Glossary.AMR_RELATION_BEGIN, Glossary.AMR)
+
+            elif node.relation == Glossary.AMR_EXTENT and node_instance is not None:
+                node.var = Glossary.FRED + node_instance.var.capitalize()
+                self.remove_instance(node)
+
+            if node.relation == Glossary.AMR_VALUE and node_instance is None:
+                if re.match(Glossary.NN_INTEGER2, node.var) or re.match(Glossary.NN_INTEGER, node.var):
+                    node.relation = Glossary.DUL_HAS_DATA_VALUE
+                else:
+                    node.relation = Glossary.DUL_HAS_QUALITY
+                    node.var = Glossary.FRED + node.var.capitalize()
+
+            if node.relation == Glossary.AMR_CONJ_AS_IF:
+                node.relation = Glossary.FRED_AS_IF
+                node.set_status(Glossary.NodeStatus.OK)
+
+            if node.relation == Glossary.AMR_CONDITION:
+                node.relation = Glossary.DUL_HAS_PRECONDITION
+
+            if node.status != Glossary.NodeStatus.REMOVE:
+                for j, relation in enumerate(Glossary.AMR_RELATIONS):
+                    if node.relation == relation and re.match(Glossary.AMR_VARS[j], node.var):
+                        if len(Glossary.FRED_RELATIONS[j]) > 0:
+                            node.relation = Glossary.FRED_RELATIONS[j]
+                        if len(Glossary.FRED_VARS[j]) > 0:
+                            node.var = Glossary.FRED_VARS[j]
+                    node.set_status(Glossary.NodeStatus.OK)
+
+            ops = node.get_ops()
+            if len(ops) > 0:
+                for n1 in ops:
+                    node.node_list.remove(n1)
+                    n1.relation = node.relation
+                    self.to_add.append(n1)
+                node.relation = Glossary.DUL_ASSOCIATED_WITH
+                new_node = Node("", "")
+                new_node.substitute(node)
+                node.set_status(Glossary.NodeStatus.REMOVE)
+                self.nodes.append(new_node)
+                ops[0].add(new_node)
+
+            if node.status == Glossary.NodeStatus.REMOVE:
+                self.removed.append(node)
+
+            if node.relation.startswith(Glossary.AMR_RELATION_BEGIN):
+                node.set_status(Glossary.NodeStatus.AMR)
+            else:
+                node.set_status(Glossary.NodeStatus.OK)
+
+        root.node_list[:] = [node for node in root.node_list if node.status != Glossary.NodeStatus.REMOVE]
+
+        if len(self.to_add) > 0:
+            root.add_all(self.to_add)
+            self.to_add = []
+            root = self.list_elaboration(root)
+
+        if root.relation == Glossary.TOP and len(root.get_ops()) > 0:
+            ops = root.get_ops()
+            for op in ops:
+                root.node_list.remove(op)
+            new_root = Node("", "")
+            new_root.substitute(root)
+            new_root.relation = Glossary.DUL_ASSOCIATED_WITH
+            self.nodes.append(new_root)
+            root.substitute(ops[0])
+            root.add(new_root)
+            root.relation = Glossary.TOP
+            for op in ops:
+                op.relation = Glossary.TOP
+                if not root.__eq__(op):
+                    root.add(op)
+
+            if root.relation.startswith(Glossary.AMR_RELATION_BEGIN):
+                root.set_status(Glossary.NodeStatus.AMR)
+            else:
+                root.set_status(Glossary.NodeStatus.OK)
+
+        if Parser.endless2 > Glossary.ENDLESS2:
+            return root
+
+        for i, node in enumerate(root.node_list):
+            Parser.endless2 += 1
+            root.node_list[i] = self.list_elaboration(node)
+
         return root
 
     def add_parent_list(self, root: Node) -> Node:
@@ -964,7 +1299,7 @@ class Parser:
         # TODO
         return root
 
-    def get_instance(self, node_id) -> Node:
+    def get_instance_alt(self, node_id) -> Node:
         for node in self.nodes_copy:
             if node.get_node_id() == node_id and node.get_instance() is not None:
                 return node.get_instance()
@@ -1002,20 +1337,90 @@ class Parser:
             self.couples.append(Couple(1, word))
         return occurrence_num
 
-    def args(self, root: Node):
-        # TODO
-        pass
+    @staticmethod
+    def args(root: Node):
+        if isinstance(root, Node):
+            for node in root.node_list:
+                if re.match(Glossary.AMR_ARG, node.relation):
+                    node.verb = root.verb
 
     def other_instance_elaboration(self, root: Node) -> Node:
+        instance = root.get_instance()
+        if not isinstance(instance, Node):
+            return root
+
+        n_var = Glossary.FRED + instance.var + "_" + str(self.occurrence(instance.var))
+        for node in self.get_equals(root):
+            ins = node.get_instance()
+            if isinstance(ins, Node):
+                node.var = n_var
+                ins.relation = Glossary.RDF_TYPE
+                flag = True
+                if instance.var in Glossary.SPECIAL_INSTANCES:
+                    ins.var = (Glossary.SPECIAL_INSTANCES_PREFIX[Glossary.SPECIAL_INSTANCES.index(instance.var)]
+                               + instance.var.capitalize())
+                    flag = False
+
+                if instance.var in Glossary.AMR_INSTANCES and root.prefix:
+                    ins.var = Glossary.AMR + instance.var.capitalize()
+                    flag = False
+
+                if instance.var in Glossary.AMR_ALWAYS_INSTANCES:
+                    ins.var = Glossary.AMR + instance.var.capitalize()
+                    flag = False
+
+                if flag:
+                    ins.var = Glossary.FRED + instance.var.capitalize()
+
+                if ins.relation.startswith(Glossary.AMR_RELATION_BEGIN):
+                    ins.status = Glossary.NodeStatus.OK
+            else:
+                node.var = n_var
+        return root
+
+    def root_elaboration(self, root: Node) -> Node:
         # TODO
         return root
+
+    def date_entity(self, root: Node) -> Node:
+        # TODO
+        return root
+
+    def prep_control(self, root: Node) -> Node:
+        # TODO
+        return root
+
+    def check_for_amr_instances(self, root: Node) -> bool:
+        # TODO
+        return False
+
+    @staticmethod
+    def manner_adverb(var: str) -> str:
+        for adv in Glossary.MANNER_ADVERBS:
+            if re.match("^" + var + ".*", adv):
+                return adv
+        return ""
 
 
 if __name__ == '__main__':
     p = Parser.get_parser()
-    nodo = p.parse('''(c / charge-05 :ARG1 (h / he) :ARG2 (a / and :op1 (i / intoxicate-01 :ARG1 h
-    :location (p / public)) :op2 (r / resist-01 :ARG0 h :ARG1 (a2 / arrest-01 :ARG1 h))))''')
+    # nodo = p.parse('''(c / charge-05 :ARG1 (h / he) :ARG2 (a / and :op1 (i / intoxicate-01 :ARG1 h
+    # :location (p / public)) :op2 (r / resist-01 :ARG0 h :ARG1 (a2 / arrest-01 :ARG1 h))))''')
+    nodo = p.parse("""
+    (z0 / say-01
+    :ARG0 (z1 / i)
+    :ARG1 (z2 / go-02
+              :mode imperative
+              :ARG0 (z3 / person
+                        :wiki -
+                        :name (z4 / name
+                                  :op1 "John"))
+              :ARG4 (z5 / hell))
+    :ARG2 z3)
+    """)
     # nodo = p.parse("(z0 / lawyer :domain (z1 / man))")
     print(nodo.to_string())
     # print(nodo)
     # print(p.check(nodo))
+
+    # (z0 / horrible :domain (z1 / cake :mod (z2 / this)))
