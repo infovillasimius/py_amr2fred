@@ -686,3 +686,4 @@ class Glossary:
 
     AGE_01 = "age-01"
     NEW_VAR = "newVar"
+    SCALE = "_scale"

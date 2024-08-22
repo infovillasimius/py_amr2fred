@@ -486,18 +486,19 @@ class Parser:
         return root
 
     def check(self, root: Node) -> Node:
-        if isinstance(root, Node):
-            if root.status != Glossary.NodeStatus.OK:
-                return None
-            for i, node in enumerate(root.node_list):
-                if node.status != Glossary.NodeStatus.OK:
-                    self.removed.append(node)
-                    root.node_list.pop(i)
-                else:
-                    root.node_list[i] = self.check(node)
+        if not isinstance(root, Node):
+            return root
+        if root.status != Glossary.NodeStatus.OK:
+            return None
+        for i, node in enumerate(root.node_list):
+            if node.status != Glossary.NodeStatus.OK:
+                self.removed.append(node)
+                root.node_list.pop(i)
+            else:
+                root.node_list[i] = self.check(node)
         return root
 
-    def parse(self, amr):
+    def parse(self, amr: str) -> Node:
         amr = self.strip_accents(amr)
         root = self.get_nodes(Glossary.TOP, self.string2array(amr))
 
@@ -508,6 +509,8 @@ class Parser:
             if Parser.endless > Glossary.ENDLESS:
                 self.root_copy = Node("Error", "Recursive")
                 return root
+        else:
+            return Node("Error", "Root_is_None")
 
         root = self.check_missing_instances(root)
 
@@ -532,7 +535,7 @@ class Parser:
 
     def fred_translate(self, root: Node) -> Node:
         if not isinstance(root, Node):
-            return None
+            return root
         elif len(root.node_list) == 0:
             self.set_equals(root)  # verificare comportamento
             return root
@@ -569,17 +572,20 @@ class Parser:
         return root
 
     def check_missing_instances(self, root: Node) -> Node:
-        if isinstance(root, Node) and root.relation != Glossary.INSTANCE and root.get_instance() is None:
+        if not isinstance(root, Node):
+            return root
+        if root.relation != Glossary.INSTANCE and root.get_instance() is None:
             for n in self.nodes:
                 if n.var == root.var and n.get_instance() is not None:
                     root.make_equals(node=n)
-        for i, node in enumerate(root.node_list):
-            root.node_list[i] = self.check_missing_instances(node)
+            for i, node in enumerate(root.node_list):
+                root.node_list[i] = self.check_missing_instances(node)
         return root
 
     def multi_sentence(self, root: Node) -> Node:
-        if (isinstance(root, Node) and root.get_instance() is not None
-                and root.get_instance().var == Glossary.AMR_MULTI_SENTENCE):
+        if not isinstance(root, Node):
+            return root
+        if root.get_instance() is not None and root.get_instance().var == Glossary.AMR_MULTI_SENTENCE:
             sentences = root.get_snt()
             new_root = sentences.pop(0)
             new_root.relation = Glossary.TOP
@@ -644,13 +650,19 @@ class Parser:
         return root
 
     def set_equals(self, root: Node):
+        if not isinstance(root, Node):
+            return
         for node in self.get_equals(root):
             node.var = root.var
 
     def get_equals(self, root: Node) -> list[Node]:
+        if not isinstance(root, Node):
+            return []
         return [node for node in self.nodes if node.__eq__(root)]
 
     def dom_verify(self, root: Node) -> Node:
+        if not isinstance(root, Node):
+            return root
         dom = root.get_child(Glossary.AMR_DOMAIN)
         if dom is not None:
             instance = root.get_instance()
@@ -710,7 +722,9 @@ class Parser:
         return root
 
     def li_verify(self, root: Node) -> Node:
-        if isinstance(root, Node) and root.relation == Glossary.AMR_LI:
+        if not isinstance(root, Node):
+            return root
+        if root.relation == Glossary.AMR_LI:
             root.relation = Glossary.TOP
             var = root.parent.var
             new_instance = Node(Glossary.REIFI_HAVE_LI, Glossary.INSTANCE)
@@ -1069,8 +1083,8 @@ class Parser:
             elif node.relation == (Glossary.AMR_MANNER and node_instance is not None
                                    and not self.is_verb(node_instance.var)):
                 if re.match(Glossary.AMR_VERB2, node_instance.var) or len(self.manner_adverb(node_instance.var)) > 0:
-                    if (re.match(Glossary.AMR_VERB2, node_instance.var)
-                        and len(self.manner_adverb(node_instance.var[0:-3]))) > 0:
+                    if (re.match(Glossary.AMR_VERB2, node_instance.var) and len(
+                            self.manner_adverb(node_instance.var[0:-3]))) > 0:
                         node.var = Glossary.FRED + self.manner_adverb(node_instance.var[0:-3]).capitalize()
                     elif len(self.manner_adverb(node_instance.var)) > 0:
                         node.var = Glossary.FRED + self.manner_adverb(node_instance.var).capitalize()
@@ -1177,6 +1191,8 @@ class Parser:
         return root
 
     def add_parent_list(self, root: Node) -> Node:
+        if not isinstance(root, Node):
+            return root
         to_add = root.get_nodes_with_parent_list_not_empty()
         if len(to_add) != 0:
             for node in to_add:
@@ -1193,6 +1209,8 @@ class Parser:
         return root
 
     def instance_elaboration(self, root: Node) -> Node:
+        if not isinstance(root, Node):
+            return root
         if root.status == Glossary.NodeStatus.OK and root.relation.startswith(
                 Glossary.AMR_RELATION_BEGIN) and root.relation != Glossary.TOP:
             root.set_status(Glossary.NodeStatus.AMR)
@@ -1246,7 +1264,7 @@ class Parser:
 
     def verbs_elaboration(self, root: Node) -> Node:
         if not isinstance(root, Node):
-            return None
+            return root
         lemma = root.verb
         if root.node_type == Glossary.NodeType.VERB:
             pb = Propbank.get_propbank()
@@ -1293,11 +1311,15 @@ class Parser:
         return root
 
     def topic(self, root: Node) -> Node:
+        if not isinstance(root, Node):
+            return root
         if self.topic_flag:
             root.add(Node(Glossary.FRED_TOPIC, Glossary.DUL_HAS_QUALITY, Glossary.NodeStatus.OK))
         return root
 
     def residual(self, root: Node) -> Node:
+        if not isinstance(root, Node):
+            return root
         # TODO
         return root
 
@@ -1308,12 +1330,16 @@ class Parser:
         return None
 
     def treat_instance(self, root: Node):
+        if not isinstance(root, Node):
+            return
         for node in self.get_equals(root):
             node.var = root.var
         if root.get_instance() is not None:
             root.get_instance().status = Glossary.NodeStatus.REMOVE
 
     def remove_instance(self, root: Node):
+        if not isinstance(root, Node):
+            return
         for node in self.get_equals(root):
             node.var = root.var
         if root.get_instance() is not None:
@@ -1341,12 +1367,15 @@ class Parser:
 
     @staticmethod
     def args(root: Node):
-        if isinstance(root, Node):
-            for node in root.node_list:
-                if re.match(Glossary.AMR_ARG, node.relation):
-                    node.verb = root.verb
+        if not isinstance(root, Node):
+            return root
+        for node in root.node_list:
+            if re.match(Glossary.AMR_ARG, node.relation):
+                node.verb = root.verb
 
     def other_instance_elaboration(self, root: Node) -> Node:
+        if not isinstance(root, Node):
+            return root
         instance = root.get_instance()
         if not isinstance(instance, Node):
             return root
@@ -1381,12 +1410,166 @@ class Parser:
         return root
 
     def root_elaboration(self, root: Node) -> Node:
-        # TODO
+        instance = self.get_instance_alt(root.get_node_id())
+        root_instance = root.get_instance()
+
+        if root_instance is not None and (root_instance.var == Glossary.AND or root_instance == Glossary.OR):
+            if root_instance.var == Glossary.AND:
+                root_instance.var = Glossary.CONJUNCT
+            else:
+                root_instance.var = Glossary.DISJUNCT
+            ops = root.get_ops()
+            for n in ops:
+                n.relation = Glossary.DUL_HAS_MEMBER
+
+        if instance is None:
+            return root
+
+        if root.get_child(Glossary.AMR_CONCESSION) is not None:
+            concession = root.get_child(Glossary.AMR_CONCESSION)
+            condition = root.get_child(Glossary.AMR_CONDITION)
+            swap = Node("", "")
+
+            if (concession.get_instance() is not None and concession.get_instance().var == Glossary.EVEN_IF
+                    and concession.get_child(Glossary.AMR_OP1) is not None):
+                root.node_list.remove(concession)
+                op1 = concession.get_child(Glossary.AMR_OP1)
+                modality = Node(Glossary.BOXING_NECESSARY, Glossary.BOXING_HAS_MODALITY, Glossary.NodeStatus.OK)
+                quality = Node(Glossary.FRED_EVEN, Glossary.DUL_HAS_QUALITY, Glossary.NodeStatus.OK)
+                root.add(modality)
+                op1.add(modality)
+                swap.substitute(root)
+                root.substitute(op1)
+                root.relation = swap.relation
+                swap.relation = Glossary.FRED_ENTAILS
+                swap.add(quality)
+                root.add(swap)
+
+            if (concession.get_instance() is not None and concession.get_instance().var == Glossary.EVEN_WHEN
+                    and concession.get_child(Glossary.AMR_OP1) is not None):
+                root.node_list.remove(concession)
+                op1 = concession.get_child(Glossary.AMR_OP1)
+                quality = Node(Glossary.FRED_EVEN, Glossary.DUL_HAS_QUALITY, Glossary.NodeStatus.OK)
+                op1.relation = Glossary.FRED_WHEN
+                root.add(quality)
+                root.add(op1)
+
+            if condition is not None and condition.get_instance() is not None:
+                root.node_list.remove(condition)
+                modality = Node(Glossary.BOXING_NECESSARY, Glossary.BOXING_HAS_MODALITY, Glossary.NodeStatus.OK)
+                root.add(modality)
+                condition.add(modality)
+                swap.substitute(root)
+                root.substitute(condition)
+                root.relation = swap.relation
+                swap.relation = Glossary.FRED_ENTAILS
+                root.add(swap)
+
+        if instance.var == Glossary.SUM_OF or instance.var == Glossary.PRODUCT_OF:
+            if instance.var == Glossary.SUM_OF:
+                instance.var = Glossary.SUM
+                for op in root.get_ops():
+                    op.relation = Glossary.FRED + Glossary.SUM + Glossary.OF
+            else:
+                instance.var = Glossary.PRODUCT
+                for op in root.get_ops():
+                    op.relation = Glossary.FRED + Glossary.PRODUCT + Glossary.OF
+
+        if instance.var == Glossary.AMR_RELATIVE_POSITION:
+            if (root.get_child(Glossary.AMR_DIRECTION) is not None and root.get_child(Glossary.AMR_OP1) is not None
+                    and root.get_child(Glossary.AMR_QUANT) is not None
+                    and root.get_child(Glossary.AMR_QUANT).get_instance() is not None):
+                op1 = self.get_original(root.get_child(Glossary.AMR_OP1))
+                root.node_list.remove(op1)
+                direction = self.get_original(root.get_child(Glossary.AMR_DIRECTION))
+                op1.relation = Glossary.FRED + direction.get_instance().var + Glossary.OF
+                direction.add(op1)
+                quant = root.get_child(Glossary.AMR_QUANT)
+                root.get_instance().var = quant.get_instance().var.replace(Glossary.QUANTITY, "")
+
+        if len(instance.var) > 3 and re.match(Glossary.AMR_VERB, instance.var[-3:]) and not self.is_verb(
+                instance.var) and len(root.get_args()) == 1:
+            self.topic_flag = False
+            arg = root.get_args()[0]
+            root.node_list.remove(arg)
+            if root.get_child(Glossary.AMR_DEGREE) is not None and root.get_child(
+                    Glossary.AMR_DEGREE).get_instance() is not None:
+                instance.var = root.get_child(
+                    Glossary.AMR_DEGREE).get_instance().var.capitalize() + instance.var.capitalize()
+                root.node_list.remove(root.get_child(Glossary.AMR_DEGREE))
+
+            parent_id = root.get_node_id()
+            arg_id = arg.get_node_id()
+            parent_var = instance.var[0:-3]
+            if arg.get_instance() is not None:
+                instance.var = arg.get_instance().var
+                self.remove_instance(arg)
+            arg.make_equals(parent_id)
+            arg.relation = Glossary.DUL_HAS_QUALITY
+            arg.var = Glossary.FRED + parent_var.replace(Glossary.FRED, "")
+            root.add_all(arg.node_list)
+            arg.node_list = []
+            root.add(arg)
+            root.make_equals(arg_id)
+            arg.set_status(Glossary.NodeStatus.OK)
+
+        if (len(instance.var) > 3 and re.match(Glossary.AMR_VERB, instance.var[-3:])
+                and not self.is_verb(instance.var, root.get_args())):
+            if root.get_child(Glossary.AMR_ARG0) is not None and root.get_child(Glossary.AMR_ARG1) is not None:
+                root.get_child(Glossary.AMR_ARG0).relation = Glossary.BOXER_AGENT
+                root.get_child(Glossary.AMR_ARG1).relation = Glossary.BOXER_PATIENT
+                self.topic_flag = False
+            if root.get_child(Glossary.AMR_ARG1) is not None and root.get_child(Glossary.AMR_ARG2) is not None:
+                root.get_child(Glossary.AMR_ARG1).relation = Glossary.VN_ROLE_EXPERIENCER
+                root.get_child(Glossary.AMR_ARG2).relation = Glossary.VN_ROLE_CAUSE
+                self.topic_flag = False
+
+        if (root.get_child(Glossary.AMR_SCALE) is not None
+                and root.get_child(Glossary.AMR_SCALE).get_instance() is not None):
+            scale = root.get_child(Glossary.AMR_SCALE)
+            scale.relation = Glossary.FRED_ON
+            scale.var = scale.get_instance().var.capitalize() + Glossary.SCALE
+            self.remove_instance(scale)
+
+        if root.get_child(Glossary.AMR_ORD) is not None:
+            ord_node = root.get_child(Glossary.AMR_ORD)
+            root.node_list.remove(ord_node)
+            self.remove_instance(ord_node)
+            root.add_all(ord_node.node_list)
+            value = ord_node.get_child(Glossary.AMR_VALUE)
+            if value is not None and re.match(Glossary.NN_INTEGER, value.var):
+                num = int(value.var)
+                ord_num = self.ordinal(num)
+                value.relation = Glossary.QUANT_HAS_QUANTIFIER
+                value.var = Glossary.QUANT + ord_num
+
         return root
 
     def date_entity(self, root: Node) -> Node:
-        # TODO
+        if not isinstance(root, Node):
+            return root
+        instance = root.get_instance()
+        if len(root.node_list) == 0 or instance is None or instance.var != Glossary.AMR_DATE_ENTITY:
+            return root
+        self.date_child_elaboration(root.get_child(Glossary.AMR_DATE_ERA))
+        self.date_child_elaboration(root.get_child(Glossary.AMR_DATE_DECADE))
+        self.date_child_elaboration(root.get_child(Glossary.AMR_DATE_CENTURY))
+        self.date_child_elaboration(root.get_child(Glossary.AMR_DATE_CALENDAR))
+        self.date_child_elaboration(root.get_child(Glossary.AMR_DATE_WEEKDAY))
+        self.date_child_elaboration(root.get_child(Glossary.AMR_DATE_DAY_PERIOD))
+        self.date_child_elaboration(root.get_child(Glossary.AMR_DATE_QUARTER))
+        self.date_child_elaboration(root.get_child(Glossary.AMR_DATE_SEASON))
+        self.date_child_elaboration(root.get_child(Glossary.AMR_DATE_TIMEZONE))
+        self.date_child_elaboration(root.get_child(Glossary.AMR_DATE_YEAR))
+        self.date_child_elaboration(root.get_child(Glossary.AMR_DATE_MONTH))
+        self.date_child_elaboration(root.get_child(Glossary.AMR_DATE_DAY))
+        self.date_child_elaboration(root.get_child(Glossary.AMR_DATE_YEAR2))
         return root
+
+    def date_child_elaboration(self, child: Node):
+        if child is not None:
+            child.relation = Glossary.AMRB + child.relation[1:]
+            child = self.other_instance_elaboration_prefix(child, Glossary.AMRB)
 
     def prep_control(self, root: Node) -> Node:
         if len(root.node_list) == 0 or root.get_instance() is None or len(root.get_ops()) == 0:
@@ -1422,6 +1605,8 @@ class Parser:
 
     @staticmethod
     def check_for_amr_instances(root: Node) -> bool:
+        if not isinstance(root, Node):
+            return False
         instance = root.get_instance()
         if instance is None:
             return False
@@ -1437,13 +1622,62 @@ class Parser:
                 return adv
         return ""
 
+    def other_instance_elaboration_prefix(self, root: Node, prefix: str) -> Node:
+        if not isinstance(root, Node):
+            return root
+        instance = root.get_instance()
+        if instance is None:
+            return root
+        n_var = Glossary.FRED + instance.var + "_" + self.occurrence(instance.var)
+        for node in self.get_equals(root):
+            instance_in_list = node.get_instance()
+            if instance_in_list is not None:
+                node.var = n_var
+                instance_in_list.relation = Glossary.RDF_TYPE
+                flag = True
+                if instance.var in Glossary.SPECIAL_INSTANCES:
+                    instance_in_list.var = Glossary.SPECIAL_INSTANCES_PREFIX[
+                                               Glossary.SPECIAL_INSTANCES.index(
+                                                   instance.var)] + instance.var.capitalize()
+                    flag = False
+                if flag:
+                    instance_in_list.var = prefix + instance.var.capitalize()
+                if not instance_in_list.relation.startswith(Glossary.AMR_RELATION_BEGIN):
+                    instance_in_list.set_status(Glossary.NodeStatus.OK)
+            else:
+                node.var = n_var
+        return root
+
+    def get_original(self, root: Node) -> Node | None:
+        if not isinstance(root, Node):
+            return root
+        for node in self.nodes:
+            if root.__eq__(node) and node.get_instance() is not None:
+                return node
+        return None
+
+    @staticmethod
+    def ordinal(num: int) -> str:
+        suffixes = ["th", "st", "nd", "rd", "th", "th", "th", "th", "th", "th"]
+        if num == 11 or num == 12 or num == 13:
+            return str(num) + "th"
+        else:
+            return str(num) + suffixes[num % 10]
+
 
 if __name__ == '__main__':
     p = Parser.get_parser()
-    # nodo = p.parse('''(c / charge-05 :ARG1 (h / he) :ARG2 (a / and :op1 (i / intoxicate-01 :ARG1 h
-    # :location (p / public)) :op2 (r / resist-01 :ARG0 h :ARG1 (a2 / arrest-01 :ARG1 h))))''')
     nodo = p.parse("""
-    (z0 / say-01
+    (z0 / horrible :domain (z1 / cake :mod (z2 / this)))
+    """)
+    # nodo = p.parse("(z0 / lawyer :domain (z1 / man))")
+    # print(nodo.to_string())
+    print(nodo)
+    # print(p.check(nodo))
+"""
+(z0 / horrible :domain (z1 / cake :mod (z2 / this)))
+
+(z0 / say-01
     :ARG0 (z1 / i)
     :ARG1 (z2 / go-02
               :mode imperative
@@ -1453,10 +1687,8 @@ if __name__ == '__main__':
                                   :op1 "John"))
               :ARG4 (z5 / hell))
     :ARG2 z3)
-    """)
-    # nodo = p.parse("(z0 / lawyer :domain (z1 / man))")
-    print(nodo.to_string())
-    # print(nodo)
-    # print(p.check(nodo))
 
-    # (z0 / horrible :domain (z1 / cake :mod (z2 / this)))
+(c / charge-05 :ARG1 (h / he) :ARG2 (a / and :op1 (i / intoxicate-01 :ARG1 h :location (p / public)) 
+:op2 (r / resist-01 :ARG0 h :ARG1 (a2 / arrest-01 :ARG1 h))))
+
+"""
