@@ -314,7 +314,7 @@ class Propbank:
                 role_list.append(role)
         return role_list
 
-    def list_find(self, word, args) -> list:
+    def list_find(self, word, args) -> list | None:
         result = []
         num = len(args)
         cfr = 0
@@ -1276,10 +1276,12 @@ class Parser:
                 for node in root.get_args():
                     if isinstance(node, Node):
                         r = Glossary.PB_ROLESET + lemma2
+
                         pb_roles = pb.role_find(r,
                                                 Glossary.PropbankRoleFields.PB_Frame,
-                                                Glossary.PB_SCHEMA + node.relation[1:],
+                                                Glossary.PB_SCHEMA + node.relation[1:].upper(),
                                                 Glossary.PropbankRoleFields.PB_ARG)
+
                         if (len(pb_roles) > 0
                                 and pb_roles[0][Glossary.PropbankRoleFields.PB_Role.value] is not None
                                 and len(pb_roles[0][Glossary.PropbankRoleFields.PB_Role.value]) > 0):
