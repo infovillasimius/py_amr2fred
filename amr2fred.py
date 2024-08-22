@@ -1389,11 +1389,45 @@ class Parser:
         return root
 
     def prep_control(self, root: Node) -> Node:
-        # TODO
+        if len(root.node_list) == 0 or root.get_instance() is None or len(root.get_ops()) == 0:
+            return root
+        var = root.get_instance().var.replace(Glossary.FRED, "")
+        quality = Node(Glossary.FRED + var.capitalize(), Glossary.DUL_HAS_QUALITY, Glossary.NodeStatus.OK)
+        manner = root.get_child(Glossary.AMR_MANNER)
+        if manner is not None:
+            manner = manner.get_instance()
+        go = False
+        for prep in Glossary.PREPOSITION:
+            if var == prep:
+                go = True
+                break
+        if go:
+            for node in root.get_ops():
+                node.relation = root.relation
+            if manner is not None and len(self.manner_adverb(manner.var)) > 0:
+                quality.var = Glossary.FRED + self.manner_adverb(manner.var) + quality.var.capitalize()
+                root.node_list.remove(root.get_child(Glossary.AMR_MANNER))
+            else:
+                quality.var = Glossary.FRED + quality.var.capitalize()
+            root.add(quality)
+            self.remove_instance(root)
+            if root.relation == Glossary.TOP:
+                root.relation = Glossary.PREP_SUBSTITUTION
+            else:
+                first = root.node_list[0]
+                root.node_list.remove(first)
+                first.add_all(root.node_list)
+                root.substitute(first)
         return root
 
-    def check_for_amr_instances(self, root: Node) -> bool:
-        # TODO
+    @staticmethod
+    def check_for_amr_instances(root: Node) -> bool:
+        instance = root.get_instance()
+        if instance is None:
+            return False
+        for amr_instance in Glossary.AMR_INSTANCES:
+            if instance.var == amr_instance and root.prefix:
+                return True
         return False
 
     @staticmethod
