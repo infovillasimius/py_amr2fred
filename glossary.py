@@ -58,9 +58,10 @@ class Glossary:
     D0_LOCATION = D0 + "Location"
     D0_TOPIC = D0 + "Topic"
 
-    DULS = {DUL_AGENT, DUL_CONCEPT, DUL_INFORMATION_ENTITY, DUL_ORGANISM, DUL_ORGANIZATION, DUL_SUBSTANCE, D0_TOPIC,
-            D0_LOCATION}
-    DULS_CHECK = {"agent", "concept", "informationentity", "organism", "organization", "substance", "topic", "location"}
+    DULS = [DUL_AGENT, DUL_CONCEPT, DUL_INFORMATION_ENTITY, DUL_ORGANISM, DUL_ORGANIZATION, DUL_SUBSTANCE, D0_TOPIC,
+            D0_LOCATION, DUL_PERSON]
+    DULS_CHECK = ["agent", "concept", "informationentity", "organism", "organization", "substance", "topic", "location",
+                  "person"]
 
     # Local name for boxer
     BOXER = "boxer:"
@@ -682,8 +683,12 @@ class Glossary:
                        AMR_MANNER, AMR_MEDIUM, AMR_MOD, AMR_PART, AMR_PATH, AMR_POLARITY, AMR_PURPOSE, AMR_RANGE,
                        AMR_SOURCE, AMR_SUB_EVENT_OF, AMR_SUBSET, AMR_SUBSET_OF, AMR_TIME, AMR_TOPIC, AMR_AGE]
 
+    NON_LITERAL = ":"
+    WRONG_APOSTROPHE = "’"
+    RIGHT_APOSTROPHE = "'"
     FS_SCHEMA_SEMANTIC_ROLE = FS_SCHEMA + "SemanticRole"
 
     AGE_01 = "age-01"
     NEW_VAR = "newVar"
     SCALE = "_scale"
+    PBLR_POLARITY = "pblr:polarity"

@@ -74,6 +74,8 @@ class Node:
         return self.__node_id == other.__node_id
 
     def to_string(self) -> str:
+        if not self.visibility:
+            return ""
         if Parser.endless > Glossary.ENDLESS:
             return Glossary.RECURSIVE_ERROR
         stringa = "\n" + "\t" * Node.level
@@ -303,33 +305,30 @@ class Propbank:
     def frame_find(self, word, frame_field: Glossary.PropbankFrameFields) -> list:
         frame_list = []
         for frame in self.frame_matrix[1]:
-            if word == frame[frame_field.value]:
+            if word.casefold() == frame[frame_field.value].casefold():
                 frame_list.append(frame)
         return frame_list
 
     def role_find(self, word, role_field, value, role_field_2) -> list:
         role_list = []
         for role in self.role_matrix[1]:
-            if word == role[role_field.value] and value == role[role_field_2.value]:
+            if (word.casefold() == role[role_field.value].casefold()
+                    and value.casefold() == role[role_field_2.value].casefold()):
                 role_list.append(role)
         return role_list
 
-    def list_find(self, word, args) -> list | None:
+    def list_find(self, word, args: list[Node]) -> list[Node] | None:
         result = []
         num = len(args)
         cfr = 0
         if Glossary.PB_ROLESET not in word:
             word = Glossary.PB_ROLESET + word
-        node_list = self.frame_find(word, Glossary.PropbankRoleFields.PB_Frame)
         for node in args:
-            assert isinstance(node, Node)
             r = Glossary.PB_SCHEMA + node.relation[1:]
-            for l1 in node_list:
-                if l1[Glossary.PropbankRoleFields.PB_ARG.value] == r:
-                    cfr += 1
-                    result += self.role_find(r, Glossary.PropbankRoleFields.PB_ARG, word,
-                                             Glossary.PropbankRoleFields.PB_Frame)
-                    break
+            res = self.role_find(r, Glossary.PropbankRoleFields.PB_ARG, word, Glossary.PropbankRoleFields.PB_Frame)
+            if len(res) > 0:
+                result.append(res[0])
+                cfr += 1
         if cfr >= num:
             return result
         return None
@@ -815,7 +814,7 @@ class Parser:
                     else:
                         if dom is None:
                             root_ins = instance.var
-                            root.var = Glossary.FRED + root_ins.lower() + "_" + self.occurrence(root_ins)
+                            root.var = Glossary.FRED + root_ins.lower() + "_" + str(self.occurrence(root_ins))
                             self.remove_instance(root)
                             mod_node.var = (Glossary.FRED
                                             + mod_ins.replace(Glossary.FRED, "").capitalize()
@@ -879,6 +878,7 @@ class Parser:
 
             if node.relation == Glossary.AMR_WIKIDATA:
                 if node.var == Glossary.AMR_MINUS:
+                    node.relation = ""
                     node.status = Glossary.NodeStatus.REMOVE
                 else:
                     node.relation = Glossary.OWL_SAME_AS
@@ -1148,9 +1148,9 @@ class Parser:
             if node.status == Glossary.NodeStatus.REMOVE:
                 self.removed.append(node)
 
-            if node.relation.startswith(Glossary.AMR_RELATION_BEGIN):
+            if node.relation.startswith(Glossary.AMR_RELATION_BEGIN) and node.status != Glossary.NodeStatus.REMOVE:
                 node.set_status(Glossary.NodeStatus.AMR)
-            else:
+            elif node.status != Glossary.NodeStatus.REMOVE:
                 node.set_status(Glossary.NodeStatus.OK)
 
         root.node_list[:] = [node for node in root.node_list if node.status != Glossary.NodeStatus.REMOVE]
@@ -1320,7 +1320,105 @@ class Parser:
     def residual(self, root: Node) -> Node:
         if not isinstance(root, Node):
             return root
-        # TODO
+
+        if Glossary.LITERAL in root.var:
+            root.var = root.var.replace(Glossary.LITERAL, "")
+            root.set_status(Glossary.NodeStatus.OK)
+
+        if Glossary.NON_LITERAL not in root.var and len(root.node_list) == 1:
+            var = root.var
+            root_id = root.get_node_id()
+            child = root.node_list[0]
+            if Glossary.NON_LITERAL in child.var and child.relation == Glossary.DUL_ASSOCIATED_WITH:
+                root.var = child.var
+                root.add_all(child.node_list)
+                root.make_equals(child)
+                child.make_equals(node_id=root_id)
+                child.node_list = []
+                child.var = var
+
+        if Glossary.FRED + Glossary.LITERAL2 in root.var:
+            root.var = root.var.replace(Glossary.FRED + Glossary.LITERAL2, "")
+            root.set_status(Glossary.NodeStatus.OK)
+
+        if Glossary.FRED in root.var or Glossary.AMR:
+            temp = root.var.replace(Glossary.FRED, "").replace(Glossary.AMR, "")
+            temp = self.disambiguation(temp)
+            root.var = temp
+
+        if "fred:Fred:" in root.var:
+            root.var = root.var.replace("fred:Fred:", "")
+            root.var = Glossary.FRED + root.var.capitalize()
+
+        if re.match(Glossary.AMR_VERB2, root.var) and root.status != Glossary.NodeStatus.OK and len(root.var) > 3:
+            root.add(Node(Glossary.DUL_EVENT, Glossary.RDFS_SUBCLASS_OF, Glossary.NodeStatus.OK))
+            args = root.get_args()
+            if Glossary.NON_LITERAL in root.var:
+                verb = root.var.split(Glossary.NON_LITERAL)[1]
+            else:
+                verb = root.var
+
+            for arg in args:
+                arg.verb = verb
+            root.var = root.var[0:-3]
+            root.node_type = Glossary.NodeType.VERB
+
+        elif re.match(Glossary.AMR_VERB2, root.var) and root.status != Glossary.NodeStatus.OK:
+            if Glossary.NON_LITERAL in root.var:
+                new_var = root.var.split(Glossary.NON_LITERAL)[1].lower()
+            else:
+                new_var = root.var
+
+            root.malformed = True
+            root.add(Node(Glossary.FRED + new_var[0:-3].capitalize(), Glossary.RDF_TYPE, Glossary.NodeStatus.OK))
+            root.var = Glossary.FRED + new_var[0:-3] + "_" + self.occurrence(new_var[0:-3])
+            self.set_equals(root)
+
+        if re.match(Glossary.AMR_ARG, root.relation):
+            root.relation = Glossary.VN_ROLE_PREDICATE
+            root.malformed = True
+            root.set_status(Glossary.NodeStatus.OK)
+
+        if root.relation == Glossary.AMR_COMPARED_TO:
+            new_relation = Glossary.AMR + Glossary.AMR_COMPARED_TO
+            root.relation = new_relation
+            root.set_status(Glossary.NodeStatus.OK)
+
+        if (root.relation == Glossary.AMR_MODE and (root.var == Glossary.AMR_IMPERATIVE
+                                                    or root.var == Glossary.AMR_EXPRESSIVE
+                                                    or root.var == Glossary.AMR_INTERROGATIVE)):
+            root.relation = Glossary.AMR + root.relation[1:]
+            root.var = Glossary.AMR + root.var.replace(":", "")
+            root.set_status(Glossary.NodeStatus.OK)
+
+        if root.relation == Glossary.AMR_CONSIST_OF or root.relation == Glossary.AMR_UNIT:
+            root.relation = root.relation.replace(":", Glossary.AMR)
+            root.set_status(Glossary.NodeStatus.OK)
+
+        if root.relation.startswith(Glossary.NON_LITERAL):
+            root.relation = root.relation.replace(Glossary.NON_LITERAL, Glossary.AMR)
+            if (Glossary.NON_LITERAL not in root.var and root.status != Glossary.NodeStatus.OK
+                    and Glossary.FRED not in root.var):
+                root.var = Glossary.FRED + root.var.capitalize()
+            root.set_status(Glossary.NodeStatus.OK)
+
+        if root.var == Glossary.AMR_MINUS and root.relation == Glossary.PBLR_POLARITY:
+            root.var = Glossary.FRED + "Negative"
+
+        for node in root.node_list:
+            if Glossary.NON_LITERAL not in node.var and node.var in self.vars:
+                node.var = Glossary.FRED + "malformed_amr/" + node.var
+                node.malformed = True
+
+        root.node_list[:] = [n for n in root.node_list if n.status != Glossary.NodeStatus.REMOVE]
+
+        if Glossary.NON_LITERAL not in root.var and re.match(Glossary.AMR_VAR, root.var):
+            root.var = Glossary.FRED + "Undefined"
+            root.malformed = True
+
+        for i, node in enumerate(root.node_list):
+            root.node_list[i] = self.residual(node)
+
         return root
 
     def get_instance_alt(self, node_id) -> Node:
@@ -1504,13 +1602,13 @@ class Parser:
             if arg.get_instance() is not None:
                 instance.var = arg.get_instance().var
                 self.remove_instance(arg)
-            arg.make_equals(parent_id)
+            arg.make_equals(node_id=parent_id)
             arg.relation = Glossary.DUL_HAS_QUALITY
             arg.var = Glossary.FRED + parent_var.replace(Glossary.FRED, "")
             root.add_all(arg.node_list)
             arg.node_list = []
             root.add(arg)
-            root.make_equals(arg_id)
+            root.make_equals(node_id=arg_id)
             arg.set_status(Glossary.NodeStatus.OK)
 
         if (len(instance.var) > 3 and re.match(Glossary.AMR_VERB, instance.var[-3:])
@@ -1570,6 +1668,7 @@ class Parser:
         if child is not None:
             child.relation = Glossary.AMRB + child.relation[1:]
             child = self.other_instance_elaboration_prefix(child, Glossary.AMRB)
+            child.status = Glossary.NodeStatus.OK
 
     def prep_control(self, root: Node) -> Node:
         if len(root.node_list) == 0 or root.get_instance() is None or len(root.get_ops()) == 0:
@@ -1664,31 +1763,53 @@ class Parser:
         else:
             return str(num) + suffixes[num % 10]
 
+    @staticmethod
+    def disambiguation(var: str) -> str:
+        for i, dul in enumerate(Glossary.DULS_CHECK):
+            if dul == var.lower():
+                return Glossary.DULS[i]
+        return Glossary.FRED + var
+
 
 if __name__ == '__main__':
     p = Parser.get_parser()
     nodo = p.parse("""
-    (z0 / horrible :domain (z1 / cake :mod (z2 / this)))
+    (z0 / say-01
+        :ARG0 (z1 / i)
+        :ARG1 (z2 / go-02
+                  :mode imperative
+                  :ARG0 (z3 / person
+                            :wiki -
+                            :name (z4 / name
+                                      :op1 "John"))
+                  :ARG4 (z5 / hell))
+        :ARG2 z3)
     """)
     # nodo = p.parse("(z0 / lawyer :domain (z1 / man))")
-    # print(nodo.to_string())
-    print(nodo)
+    print(nodo.to_string())
+    # print(nodo)
     # print(p.check(nodo))
-"""
-(z0 / horrible :domain (z1 / cake :mod (z2 / this)))
-
-(z0 / say-01
-    :ARG0 (z1 / i)
-    :ARG1 (z2 / go-02
-              :mode imperative
-              :ARG0 (z3 / person
-                        :wiki -
-                        :name (z4 / name
-                                  :op1 "John"))
-              :ARG4 (z5 / hell))
-    :ARG2 z3)
-
-(c / charge-05 :ARG1 (h / he) :ARG2 (a / and :op1 (i / intoxicate-01 :ARG1 h :location (p / public)) 
-:op2 (r / resist-01 :ARG0 h :ARG1 (a2 / arrest-01 :ARG1 h))))
-
-"""
+    """
+    (z0 / horrible :domain (z1 / cake :mod (z2 / this)))
+    
+    (z0 / say-01
+        :ARG0 (z1 / i)
+        :ARG1 (z2 / go-02
+                  :mode imperative
+                  :ARG0 (z3 / person
+                            :wiki -
+                            :name (z4 / name
+                                      :op1 "John"))
+                  :ARG4 (z5 / hell))
+        :ARG2 z3)
+    
+    (c / charge-05 :ARG1 (h / he) :ARG2 (a / and :op1 (i / intoxicate-01 :ARG1 h :location (p / public)) 
+    :op2 (r / resist-01 :ARG0 h :ARG1 (a2 / arrest-01 :ARG1 h))))
+    
+    (z0 / holiday
+        :mod (z1 / nation)
+        :domain (z2 / date-entity
+                    :month 7
+                    :day 4))
+    
+    """
