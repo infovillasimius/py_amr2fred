@@ -178,7 +178,7 @@ class Glossary:
     TIME_SCHEMA2 = "time:"
     TIME_SCHEMA = "([01]?[0-9]|2[0-3]):[0-5][0-9]"
 
-    _SCHEMA_NS = "http://www.w3.org/2001/XMLSchema#string"
+    STRING_SCHEMA_NS = "http://www.w3.org/2001/XMLSchema#string"
 
     DBR = "dbr:"  # "dbpedia:"
     DBR_NS = "http://dbpedia.org/resource/"
@@ -425,8 +425,15 @@ class Glossary:
     # Fred's element names number
     PREFIX_NUM = len(PREFIX)
 
-    # Jena's writers output modes
+    # rdflib's writers output modes
     RDF_MODE = ["json-ld", "n3", "nquads", "nt", "hext", "pretty-xml", "trig", "trix", "turtle", "longturtle", "xml"]
+
+    class Rdflib_mode(Enum):
+        JSON_LD = "json-ld"
+        N3 = "n3"
+        NT = "nt"
+        XML = "xml"
+        TURTLE = "turtle"
 
     # Number of Jena's writers output modes
     RDF_MODE_MAX = len(RDF_MODE)
