@@ -1,5 +1,10 @@
 # py_amr2fred
-Python version of amr2fred
+
+From Abstract Meaning Representation AMR (https://amr.isi.edu/) to RDF, according to the syntax of
+FRED (http://wit.istc.cnr.it/stlab-tools/fred/)
+
+Python version of
+[amr2fred](http://framester.istc.cnr.it/amr-2-fred)'s core functions
 
 Install:
 
@@ -32,4 +37,4 @@ Possible formats:
 - Glossary.Rdflib_mode.N3
 - Glossary.Rdflib_mode.JSON_LD
 
-[Web application](http://framester.istc.cnr.it/amr-2-fred)
+
