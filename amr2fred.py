@@ -713,7 +713,7 @@ class Couple:
         self.__word = word
 
     def __str__(self):
-        return "\nWord: " + self.__word + " - occurrences: " + self.__occurrence
+        return "\nWord: " + self.__word + " - occurrences: " + str(self.__occurrence)
 
     def get_word(self):
         return self.__word
@@ -2575,3 +2575,5 @@ if __name__ == '__main__':
     """
     print(amr2fred.translate(amr_text, serialize=True, mode=Glossary.RdflibMode.N3))
     # print(amr2fred.writer.get_prefixes())
+
+
