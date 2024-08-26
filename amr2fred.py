@@ -1061,12 +1061,20 @@ class Parser:
             Parser.__parser = Parser()
         return Parser.__parser
 
+    def reinitialise(self):
+        self.nodes = []
+        self.nodes_copy = []
+        self.couples = []
+        self.removed = []
+        self.to_add = []
+        self.vars = []
+        self.root_copy = None
+        self.topic_flag = True
+
     def string2array(self, amr: str) -> list[str] | None:
         word_list = []
         amr = self.normalize(amr)
-        # word_list_2 = [x if Glossary.QUOTE not in x else Glossary.LITERAL + x.replace(Glossary.QUOTE, "") for x in
-        #                amr.strip().split(" ")]
-        # print(word_list_2)
+
         try:
             while len(amr) > 1:
                 inizio = amr.index(" ") + 1
@@ -1200,6 +1208,7 @@ class Parser:
         return root
 
     def parse(self, amr: str) -> Node:
+        self.reinitialise()
         amr = self.strip_accents(amr)
         root = self.get_nodes(Glossary.TOP, self.string2array(amr))
 
@@ -2494,6 +2503,7 @@ class RdfWriter:
         return names
 
     def to_rdf(self, root: Node):
+        self.new_graph()
         if not isinstance(root, Node):
             return
         self.queue = []
@@ -2550,7 +2560,6 @@ class Amr2fred:
     def translate(self, amr: str, mode: Glossary.RdflibMode = Glossary.RdflibMode.NT,
                   serialize: bool = True) -> str | Graph:
         root = self.parser.parse(amr)
-        self.writer.new_graph()
         self.writer.to_rdf(root)
         if serialize:
             return self.writer.serialize(mode)
