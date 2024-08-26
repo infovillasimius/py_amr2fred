@@ -17,7 +17,7 @@ Use:
 ```
 from py_amr2fred import *
 amr2fred = Amr2fred()
-mode = Glossary.Rdflib_mode.N3
+mode = Glossary.RdflibMode.N3
 amr_text = """
     (c / charge-05 :ARG1 (h / he) :ARG2 (a / and :op1 (i / intoxicate-01 :ARG1 h :location (p / public)) 
     :op2 (r / resist-01 :ARG0 h :ARG1 (a2 / arrest-01 :ARG1 h))))
@@ -31,10 +31,10 @@ serialize=False returns a rdflib Graph
 
 Possible formats:
 
-- Glossary.Rdflib_mode.TURTLE
-- Glossary.Rdflib_mode.NT
-- Glossary.Rdflib_mode.XML
-- Glossary.Rdflib_mode.N3
-- Glossary.Rdflib_mode.JSON_LD
+- Glossary.RdflibMode.TURTLE
+- Glossary.RdflibMode.NT
+- Glossary.RdflibMode.XML
+- Glossary.RdflibMode.N3
+- Glossary.RdflibMode.JSON_LD
 
 

@@ -423,7 +423,7 @@ class Glossary:
     # rdflib's writers output modes
     RDF_MODE = ["json-ld", "n3", "nquads", "nt", "hext", "pretty-xml", "trig", "trix", "turtle", "longturtle", "xml"]
 
-    class Rdflib_mode(Enum):
+    class RdflibMode(Enum):
         JSON_LD = "json-ld"
         N3 = "n3"
         NT = "nt"
@@ -737,7 +737,7 @@ class Node:
         self.label: str = ""
         self.var: str = var
         self.node_list: list[Node] = []
-        self.parent: Node = None
+        self.parent: Node | None = None
         self.parent_list: list[Node] = []
         self.visibility: bool = visibility
         self.prefix: bool = False
@@ -1061,7 +1061,7 @@ class Parser:
             Parser.__parser = Parser()
         return Parser.__parser
 
-    def string2array(self, amr: str) -> list[str]:
+    def string2array(self, amr: str) -> list[str] | None:
         word_list = []
         amr = self.normalize(amr)
         # word_list_2 = [x if Glossary.QUOTE not in x else Glossary.LITERAL + x.replace(Glossary.QUOTE, "") for x in
@@ -1117,7 +1117,7 @@ class Parser:
     def strip_accents(amr: str) -> str:
         return unidecode(amr)
 
-    def get_nodes(self, relation, amr_list) -> Node:
+    def get_nodes(self, relation, amr_list) -> Node | None:
         if amr_list is None or len(amr_list) == 0:
             return None
         root = Node(var=amr_list[1], relation=relation)
@@ -1186,7 +1186,7 @@ class Parser:
             return None
         return root
 
-    def check(self, root: Node) -> Node:
+    def check(self, root: Node) -> Node | None:
         if not isinstance(root, Node):
             return root
         if root.status != Glossary.NodeStatus.OK:
@@ -1435,7 +1435,7 @@ class Parser:
             arg2 = Node(var, Glossary.AMR_ARG2)
             self.nodes.append(arg2)
             arg2.make_equals(root.parent)
-            root.var = "li_" + root.get_node_id()
+            root.var = "li_" + str(root.get_node_id())
             root.add(new_instance)
             root.add(arg1)
             root.add(arg2)
@@ -1595,7 +1595,7 @@ class Parser:
                 node.relation = Glossary.AMR + Glossary.AMR_POLARITY_OF[1:]
 
             if (node.relation == Glossary.AMR_DOMAIN and node.get_instance() is not None
-                    and " " + node.get_instance() + " " in Glossary.DEMONSTRATIVES):
+                    and " " + node.get_instance().var + " " in Glossary.DEMONSTRATIVES):
                 self.topic_flag = False
                 node.relation = Glossary.QUANT_HAS_DETERMINER
                 node.var = Glossary.FRED + node.get_instance().var.capitalize()
@@ -1755,7 +1755,7 @@ class Parser:
             elif node.relation == Glossary.AMR_AGE and root.get_instance() is not None and node_instance is None:
                 age = node.var
                 node.relation = Glossary.TOP
-                node.var = Glossary.NEW_VAR + self.occurrence(Glossary.NEW_VAR)
+                node.var = Glossary.NEW_VAR + str(self.occurrence(Glossary.NEW_VAR))
                 node.add(Node(Glossary.AGE_01, Glossary.INSTANCE))
                 n1 = root.get_copy(relation=Glossary.AMR_ARG1)
                 self.nodes.append(n1)
@@ -1767,12 +1767,12 @@ class Parser:
                 node.relation = Glossary.TOP
                 n1 = root.get_copy(relation=Glossary.AMR_ARG1)
                 self.nodes.append(n1)
-                new_age_node = Node(Glossary.NEW_VAR + self.occurrence(Glossary.NEW_VAR), Glossary.AMR_ARG2)
+                new_age_node = Node(Glossary.NEW_VAR + str(self.occurrence(Glossary.NEW_VAR)), Glossary.AMR_ARG2)
                 self.nodes.append(new_age_node)
                 new_age_node.add_all(node.node_list)
                 node.node_list = []
                 node.add(n1)
-                node.var = Glossary.NEW_VAR + self.occurrence(Glossary.NEW_VAR)
+                node.var = Glossary.NEW_VAR + str(self.occurrence(Glossary.NEW_VAR))
                 node.add(Node(Glossary.AGE_01, Glossary.INSTANCE))
                 node.add(new_age_node)
                 root.node_list[i] = self.list_elaboration(node)
@@ -2073,7 +2073,7 @@ class Parser:
 
             root.malformed = True
             root.add(Node(Glossary.FRED + new_var[0:-3].capitalize(), Glossary.RDF_TYPE, Glossary.NodeStatus.OK))
-            root.var = Glossary.FRED + new_var[0:-3] + "_" + self.occurrence(new_var[0:-3])
+            root.var = Glossary.FRED + new_var[0:-3] + "_" + str(self.occurrence(new_var[0:-3]))
             self.set_equals(root)
 
         if re.match(Glossary.AMR_ARG, root.relation):
@@ -2126,7 +2126,7 @@ class Parser:
 
         return root
 
-    def get_instance_alt(self, node_id) -> Node:
+    def get_instance_alt(self, node_id) -> Node | None:
         for node in self.nodes_copy:
             if node.get_node_id() == node_id and node.get_instance() is not None:
                 return node.get_instance()
@@ -2432,7 +2432,7 @@ class Parser:
         instance = root.get_instance()
         if instance is None:
             return root
-        n_var = Glossary.FRED + instance.var + "_" + self.occurrence(instance.var)
+        n_var = Glossary.FRED + instance.var + "_" + str(self.occurrence(instance.var))
         for node in self.get_equals(root):
             instance_in_list = node.get_instance()
             if instance_in_list is not None:
@@ -2476,10 +2476,10 @@ class Parser:
         return Glossary.FRED + var
 
 
-class Rdf_writer:
+class RdfWriter:
     def __init__(self):
         self.queue = []
-        self.graph: Graph = None
+        self.graph: Graph | None = None
         self.new_graph()
 
     def new_graph(self):
@@ -2525,7 +2525,7 @@ class Rdf_writer:
                         o = URIRef(self.get_uri(n1.var))
                     self.graph.add((s, p, o))
 
-    def serialize(self, rdf_format: Glossary.Rdflib_mode) -> str:
+    def serialize(self, rdf_format: Glossary.RdflibMode) -> str:
         if rdf_format.value in Glossary.RDF_MODE:
             return self.graph.serialize(format=rdf_format.value)
 
@@ -2545,9 +2545,9 @@ class Rdf_writer:
 class Amr2fred:
     def __init__(self):
         self.parser = Parser.get_parser()
-        self.writer = Rdf_writer()
+        self.writer = RdfWriter()
 
-    def translate(self, amr: str, mode: Glossary.Rdflib_mode = Glossary.Rdflib_mode.NT,
+    def translate(self, amr: str, mode: Glossary.RdflibMode = Glossary.RdflibMode.NT,
                   serialize: bool = True) -> str | Graph:
         root = self.parser.parse(amr)
         self.writer.new_graph()
@@ -2564,5 +2564,5 @@ if __name__ == '__main__':
     (c / charge-05 :ARG1 (h / he) :ARG2 (a / and :op1 (i / intoxicate-01 :ARG1 h :location (p / public)) 
     :op2 (r / resist-01 :ARG0 h :ARG1 (a2 / arrest-01 :ARG1 h))))
     """
-    print(amr2fred.translate(amr_text, serialize=True, mode=Glossary.Rdflib_mode.N3))
+    print(amr2fred.translate(amr_text, serialize=True, mode=Glossary.RdflibMode.N3))
     # print(amr2fred.writer.get_prefixes())
