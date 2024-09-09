@@ -12,24 +12,39 @@ Install:
 pip install py_amr2fred
 ```
 
-Use:
+## Use:
 
 ```
 from py_amr2fred import *
 amr2fred = Amr2fred()
 mode = Glossary.RdflibMode.N3
 amr_text = """
-    (c / charge-05 :ARG1 (h / he) :ARG2 (a / and :op1 (i / intoxicate-01 :ARG1 h :location (p / public)) 
-    :op2 (r / resist-01 :ARG0 h :ARG1 (a2 / arrest-01 :ARG1 h))))
+    (c / charge-05 :ARG1 (h / he) :ARG2 (a / and :op1 (i / intoxicate-01 :ARG1 h 
+	:location (p / public)) :op2 (r / resist-01 :ARG0 h 
+	:ARG1 (a2 / arrest-01 :ARG1 h))))
 """
-print(amr2fred.translate(amr_text, serialize=True, mode=mode))
+# translate from AMR
+print(amr2fred.translate(amr_text, serialize=True, mode=mode, alt_fred_ns=None))
+
+# translate from natural language
+print(amr2fred.translate(text="Four boys making pies", serialize=True, 
+      mode=Glossary.RdflibMode.TURTLE, alt_fred_ns="http://fred-01/domain.owl#"))
 ```
 
-serialize=True returns a string
 
-serialize=False returns a rdflib Graph
+## Parameter [amr]:
 
-Possible formats:
+amr string in penman format
+
+
+## Parameter [serialize]:
+
+[True] returns a string
+
+[False] returns a rdflib Graph
+
+
+## Parameter [mode]:
 
 - Glossary.RdflibMode.TURTLE
 - Glossary.RdflibMode.NT
@@ -38,3 +53,12 @@ Possible formats:
 - Glossary.RdflibMode.JSON_LD
 
 
+
+## Parameter [alt_fred_ns]: 
+
+Alternate Uri for base Fred NS
+
+
+## Parameter [text]
+
+NL text to translate 
