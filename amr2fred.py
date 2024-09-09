@@ -8,6 +8,9 @@ import rdflib
 from rdflib import URIRef, Literal, Graph
 from unidecode import unidecode
 
+import requests
+import urllib.parse
+
 
 class Glossary:
     ENDLESS = 1000
@@ -2557,14 +2560,36 @@ class Amr2fred:
         self.parser = Parser.get_parser()
         self.writer = RdfWriter()
 
-    def translate(self, amr: str, mode: Glossary.RdflibMode = Glossary.RdflibMode.NT,
-                  serialize: bool = True) -> str | Graph:
+    def translate(self, amr: str | None = None, mode: Glossary.RdflibMode = Glossary.RdflibMode.NT,
+                  serialize: bool = True, text: str | None = None,
+                  alt_fred_ns: str | None = None) -> str | Graph:
+        if amr is None and text is None:
+            return "Nothing to do!"
+        
+        if alt_fred_ns is not None:
+            Glossary.FRED_NS = alt_fred_ns
+            Glossary.NAMESPACE[0] = alt_fred_ns
+        else:
+            Glossary.FRED_NS = Glossary.DEFAULT_FRED_NS
+            Glossary.NAMESPACE[0] = Glossary.DEFAULT_FRED_NS
+
+        if amr is None and text is not None:
+            amr = self.get_amr(text)
+            if amr is None:
+                return "Sorry, no amr!"
+        
         root = self.parser.parse(amr)
         self.writer.to_rdf(root)
         if serialize:
             return self.writer.serialize(mode)
         else:
             return self.writer.graph
+
+    @staticmethod
+    def get_amr(text):
+        uri = "https://arco.istc.cnr.it/spring/text-to-amr?blinkify=true&sentence=" + urllib.parse.quote_plus(text)
+        amr = json.loads(requests.get(uri).text).get("penman")
+        return amr
 
 
 if __name__ == '__main__':
@@ -2573,7 +2598,10 @@ if __name__ == '__main__':
     (c / charge-05 :ARG1 (h / he) :ARG2 (a / and :op1 (i / intoxicate-01 :ARG1 h :location (p / public)) 
     :op2 (r / resist-01 :ARG0 h :ARG1 (a2 / arrest-01 :ARG1 h))))
     """
-    print(amr2fred.translate(amr_text, serialize=True, mode=Glossary.RdflibMode.N3))
+    print(amr2fred.translate(amr=amr_text, serialize=True, mode=Glossary.RdflibMode.N3,
+                             # alt_fred_ns="http://fred-01.org/domain.owl#"
+                             ))
     # print(amr2fred.writer.get_prefixes())
-
-
+    print(amr2fred.translate(text="Four boys making pies", serialize=True, mode=Glossary.RdflibMode.TURTLE,
+                             # alt_fred_ns="http://fred-01/domain.owl#"
+                             ))
