@@ -2055,7 +2055,7 @@ class Parser:
             root.var = root.var.replace(Glossary.FRED + Glossary.LITERAL2, "")
             root.set_status(Glossary.NodeStatus.OK)
 
-        if Glossary.FRED in root.var or Glossary.AMR:
+        if Glossary.FRED in root.var or Glossary.AMR in root.var:
             temp = root.var.replace(Glossary.FRED, "").replace(Glossary.AMR, "")
             temp = self.disambiguation(temp)
             root.var = temp
