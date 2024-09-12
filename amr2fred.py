@@ -854,7 +854,6 @@ class Node:
             self.__node_id = node_id
 
     def add(self, node):
-        print(node)
         self.node_list.append(node)
         node.parent = self
 
@@ -900,8 +899,10 @@ class Node:
         """
         snt: list[Node] = []
         for node in self.node_list:
-            if node.relation == Glossary.AMR_SENTENCE:
+            if re.match(Glossary.AMR_SENTENCE, node.relation):
                 snt.append(node)
+
+        for node in self.node_list:
             snt += node.get_snt()
         return snt
 
@@ -2595,13 +2596,15 @@ class Amr2fred:
 if __name__ == '__main__':
     amr2fred = Amr2fred()
     amr_text = """
-    (c / charge-05 :ARG1 (h / he) :ARG2 (a / and :op1 (i / intoxicate-01 :ARG1 h :location (p / public)) 
+    (c / charge-05 :ARG1 (h / he) :ARG2 (a / and :op1 (i / intoxicate-01 :ARG1 h :location (p / public))
     :op2 (r / resist-01 :ARG0 h :ARG1 (a2 / arrest-01 :ARG1 h))))
     """
     print(amr2fred.translate(amr=amr_text, serialize=True, mode=Glossary.RdflibMode.N3,
                              # alt_fred_ns="http://fred-01.org/domain.owl#"
                              ))
-    # print(amr2fred.writer.get_prefixes())
+
     print(amr2fred.translate(text="Four boys making pies", serialize=True, mode=Glossary.RdflibMode.TURTLE,
                              # alt_fred_ns="http://fred-01/domain.owl#"
                              ))
+
+    # print(amr2fred.writer.get_prefixes())
