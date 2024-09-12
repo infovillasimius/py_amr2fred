@@ -2,14 +2,13 @@ import csv
 import json
 import os
 import re
+import urllib.parse
 from enum import Enum
 
 import rdflib
+import requests
 from rdflib import URIRef, Literal, Graph
 from unidecode import unidecode
-
-import requests
-import urllib.parse
 
 
 class Glossary:
@@ -855,6 +854,7 @@ class Node:
             self.__node_id = node_id
 
     def add(self, node):
+        print(node)
         self.node_list.append(node)
         node.parent = self
 
@@ -1470,7 +1470,7 @@ class Parser:
             return self.inverse_checker(n)
         else:
             for node in inv_nodes:
-                new_node = root.get_copy(node.relation[0:-3])
+                new_node = root.get_copy(relation=node.relation[0:-3])
                 self.nodes.append(new_node)
                 node.relation = Glossary.TOP
                 node.add(new_node)
@@ -1810,7 +1810,7 @@ class Parser:
 
             elif (node.relation == Glossary.AMR_MANNER and node_instance is not None and root.get_instance() is not None
                   and self.is_verb(node_instance.var)):
-                node.relation = Glossary.FRED + root.get_instance()[:-3] + Glossary.BY
+                node.relation = Glossary.FRED + root.get_instance().var[:-3] + Glossary.BY
 
             elif node.relation.startswith(Glossary.AMR_PREP):
                 node.relation = node.relation.replace(Glossary.AMR_PREP, Glossary.FRED)
