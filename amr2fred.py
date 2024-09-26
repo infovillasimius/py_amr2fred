@@ -131,7 +131,7 @@ class Glossary:
     VN_ROLE_TIME = VN_ROLE + "Time"
     VN_ROLE_INSTRUMENT = VN_ROLE + "Instrument"
     VN_ROLE_CAUSE = VN_ROLE + "Cause"
-    VN_ROLE_EXPERIENCER = VN_ROLE + "Expreriencer"
+    VN_ROLE_EXPERIENCER = VN_ROLE + "Experiencer"
     VN_ROLE_THEME = VN_ROLE + "Theme"
     VN_ROLE_PREDICATE = VN_ROLE + "Predicate"
 
@@ -345,10 +345,6 @@ class Glossary:
     OR = "or"
     IN = "in"
 
-    # Stringhe usate per la gestione del file predmatrix.txt
-    PIVOT = "Pivot"
-    NULL = "Null"
-    PB = "pb:"
     ID = "id:"
 
     # Stringhe usate per la generazione del grafico .dot
@@ -581,45 +577,6 @@ class Glossary:
         ERROR = 2
         REMOVE = 3
 
-    # Field names of predmatrix table
-    class LineFields(Enum):
-        ID_POS = 0
-        ID_PRED = 1
-        ID_ROLE = 2
-        VN_CLASS = 3
-        VN_CLASS_NUMBER = 4
-        VN_SUBCLASS = 5
-        VN_SUBCLASS_NUMBER = 6
-        VN_LEMA = 7
-        VN_ROLE = 8
-        WN_SENSE = 9
-        MCR_iliOffset = 10
-        FN_FRAME = 11
-        FN_LE = 12
-        FN_FRAME_ELEMENT = 13
-        PB_ROLESET = 14
-        PB_ARG = 15
-        MCR_BC = 16
-        MCR_DOMAIN = 17
-        MCR_SUMO = 18
-        MCR_TO = 19
-        MCR_LEXNAME = 20
-        MCR_BLC = 21
-        WN_SENSEFREC = 22
-        WN_SYNSET_REL_NUM = 23
-        ESO_CLASS = 24
-        ESO_ROLE = 25
-
-    # Field names of pb2vn table
-    class Pb2vnFields(Enum):
-        PB_Role_URI = 0
-        PB_RoleSet = 1
-        PB_Role = 2
-        VerbNet_Role_URI_for_FRED = 3
-        VN_Role = 4
-        VN_Sense = 5
-        VerbNet_VerbSense_URI_for_FRED = 6
-
     # Field names of propbankframe table
     class PropbankFrameFields(Enum):
         PB_Frame = 0
@@ -637,20 +594,6 @@ class Glossary:
         PB_Tr = 4
         PB_ARG = 5
         VA_Role = 6
-
-    # rdflib's writers output modes
-    class RdfWriteMode(Enum):
-        JSON_LD = 0
-        N3 = 1
-        NQUADS = 2
-        NT = 3
-        HEXT = 4
-        PRETTY_XML = 5
-        TRIG = 6
-        TRIX = 7
-        TURTLE = 8
-        LONGTURTLE = 9
-        XML = 10
 
     DISJUNCT = "disjunct"
     CONJUNCT = "conjunct"
@@ -2560,9 +2503,14 @@ class Amr2fred:
     def __init__(self):
         self.parser = Parser.get_parser()
         self.writer = RdfWriter()
+        self.spring_uri = "https://arco.istc.cnr.it/spring/text-to-amr?blinkify=true&sentence="
+        self.spring_uni_uri = "https://nlp.uniroma1.it/spring/api/text-to-amr?sentence="
 
-    def translate(self, amr: str | None = None, mode: Glossary.RdflibMode = Glossary.RdflibMode.NT,
-                  serialize: bool = True, text: str | None = None,
+    def translate(self, amr: str | None = None,
+                  mode: Glossary.RdflibMode = Glossary.RdflibMode.NT,
+                  serialize: bool = True,
+                  text: str | None = None,
+                  alt_api: bool = False,
                   alt_fred_ns: str | None = None) -> str | Graph:
         if amr is None and text is None:
             return "Nothing to do!"
@@ -2575,7 +2523,7 @@ class Amr2fred:
             Glossary.NAMESPACE[0] = Glossary.DEFAULT_FRED_NS
 
         if amr is None and text is not None:
-            amr = self.get_amr(text)
+            amr = self.get_amr(text, alt_api)
             if amr is None:
                 return "Sorry, no amr!"
         
@@ -2586,9 +2534,11 @@ class Amr2fred:
         else:
             return self.writer.graph
 
-    @staticmethod
-    def get_amr(text):
-        uri = "https://arco.istc.cnr.it/spring/text-to-amr?blinkify=true&sentence=" + urllib.parse.quote_plus(text)
+    def get_amr(self, text, alt_api):
+        if alt_api:
+            uri = self.spring_uni_uri + urllib.parse.quote_plus(text)
+        else:
+            uri = self.spring_uri + urllib.parse.quote_plus(text)
         amr = json.loads(requests.get(uri).text).get("penman")
         return amr
 
@@ -2604,7 +2554,6 @@ if __name__ == '__main__':
                              ))
 
     print(amr2fred.translate(text="Four boys making pies", serialize=True, mode=Glossary.RdflibMode.TURTLE,
+                             alt_api=True
                              # alt_fred_ns="http://fred-01/domain.owl#"
                              ))
-
-    # print(amr2fred.writer.get_prefixes())

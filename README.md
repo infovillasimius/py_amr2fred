@@ -27,7 +27,7 @@ amr_text = """
 print(amr2fred.translate(amr_text, serialize=True, mode=mode, alt_fred_ns=None))
 
 # translate from natural language
-print(amr2fred.translate(text="Four boys making pies", serialize=True, 
+print(amr2fred.translate(text="Four boys making pies", serialize=True, alt_api=False
       mode=Glossary.RdflibMode.TURTLE, alt_fred_ns="http://fred-01/domain.owl#"))
 ```
 
@@ -62,3 +62,9 @@ Alternate Uri for base Fred NS
 ## Parameter [text]
 
 NL text to translate 
+
+## Parameter [alt_api]
+
+[True] the library use alt. API
+
+[False] the library use default API
