@@ -24,11 +24,25 @@ amr_text = """
 	:ARG1 (a2 / arrest-01 :ARG1 h))))
 """
 # translate from AMR
-print(amr2fred.translate(amr_text, serialize=True, mode=mode, alt_fred_ns=None))
+print(amr2fred.translate(amr_text, 
+    serialize=True, 
+    mode=mode, 
+    alt_fred_ns=None))
 
 # translate from natural language
-print(amr2fred.translate(text="Four boys making pies", serialize=True, alt_api=False
-      mode=Glossary.RdflibMode.TURTLE, alt_fred_ns="http://fred-01/domain.owl#"))
+print(amr2fred.translate(text="Four boys making pies", 
+    serialize=True, 
+    alt_api=False
+    mode=Glossary.RdflibMode.TURTLE, 
+    alt_fred_ns=None))
+
+print(amr2fred.translate(text="Quattro ragazzi preparano torte", 
+    serialize=True, 
+    mode=Glossary.RdflibMode.TURTLE, 
+    alt_api=False, 
+    multilingual=True, 
+    alt_fred_ns=None))
+      
 ```
 
 
