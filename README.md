@@ -63,8 +63,16 @@ Alternate Uri for base Fred NS
 
 NL text to translate 
 
+
 ## Parameter [alt_api]
 
-[True] the library use alt. API
+[True] the library will use alt. API
 
-[False] the library use default API
+[False] the library will use default API
+
+## Parameter [multilingual]
+
+[True] the library will use multilingual API
+
+[False] the library will use "English only" API
+

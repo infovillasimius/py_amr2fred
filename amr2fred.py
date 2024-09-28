@@ -2505,16 +2505,18 @@ class Amr2fred:
         self.writer = RdfWriter()
         self.spring_uri = "https://arco.istc.cnr.it/spring/text-to-amr?blinkify=true&sentence="
         self.spring_uni_uri = "https://nlp.uniroma1.it/spring/api/text-to-amr?sentence="
+        self.usea_uri = "https://arco.istc.cnr.it/usea/api/amr"
 
     def translate(self, amr: str | None = None,
                   mode: Glossary.RdflibMode = Glossary.RdflibMode.NT,
                   serialize: bool = True,
                   text: str | None = None,
                   alt_api: bool = False,
+                  multilingual: bool = False,
                   alt_fred_ns: str | None = None) -> str | Graph:
         if amr is None and text is None:
             return "Nothing to do!"
-        
+
         if alt_fred_ns is not None:
             Glossary.FRED_NS = alt_fred_ns
             Glossary.NAMESPACE[0] = alt_fred_ns
@@ -2523,10 +2525,10 @@ class Amr2fred:
             Glossary.NAMESPACE[0] = Glossary.DEFAULT_FRED_NS
 
         if amr is None and text is not None:
-            amr = self.get_amr(text, alt_api)
+            amr = self.get_amr(text, alt_api, multilingual)
             if amr is None:
                 return "Sorry, no amr!"
-        
+
         root = self.parser.parse(amr)
         self.writer.to_rdf(root)
         if serialize:
@@ -2534,26 +2536,41 @@ class Amr2fred:
         else:
             return self.writer.graph
 
-    def get_amr(self, text, alt_api):
-        if alt_api:
-            uri = self.spring_uni_uri + urllib.parse.quote_plus(text)
+    def get_amr(self, text, alt_api, multilingual):
+        if multilingual:
+            uri = self.usea_uri
+            post_request = {
+                "sentence": {
+                    "text": text
+                }
+            }
+            amr = json.loads(requests.post(uri, json=post_request).text).get("amr_graph")
         else:
-            uri = self.spring_uri + urllib.parse.quote_plus(text)
-        amr = json.loads(requests.get(uri).text).get("penman")
+            if alt_api:
+                uri = self.spring_uni_uri + urllib.parse.quote_plus(text)
+            else:
+                uri = self.spring_uri + urllib.parse.quote_plus(text)
+            amr = json.loads(requests.get(uri).text).get("penman")
         return amr
 
 
 if __name__ == '__main__':
     amr2fred = Amr2fred()
-    amr_text = """
-    (c / charge-05 :ARG1 (h / he) :ARG2 (a / and :op1 (i / intoxicate-01 :ARG1 h :location (p / public))
-    :op2 (r / resist-01 :ARG0 h :ARG1 (a2 / arrest-01 :ARG1 h))))
-    """
-    print(amr2fred.translate(amr=amr_text, serialize=True, mode=Glossary.RdflibMode.N3,
-                             # alt_fred_ns="http://fred-01.org/domain.owl#"
-                             ))
+    # amr_text = """
+    # (c / charge-05 :ARG1 (h / he) :ARG2 (a / and :op1 (i / intoxicate-01 :ARG1 h :location (p / public))
+    # :op2 (r / resist-01 :ARG0 h :ARG1 (a2 / arrest-01 :ARG1 h))))
+    # """
+    # print(amr2fred.translate(amr=amr_text, serialize=True, mode=Glossary.RdflibMode.N3,
+    #                          # alt_fred_ns="http://fred-01.org/domain.owl#"
+    #                          ))
+    #
+    # print(amr2fred.translate(text="Four boys making pies", serialize=True, mode=Glossary.RdflibMode.TURTLE,
+    #                          alt_api=True
+    #                          # alt_fred_ns="http://fred-01/domain.owl#"
+    #                          ))
 
-    print(amr2fred.translate(text="Four boys making pies", serialize=True, mode=Glossary.RdflibMode.TURTLE,
-                             alt_api=True
+    print(amr2fred.translate(text="Quattro ragazzi preparano torte", serialize=True, mode=Glossary.RdflibMode.TURTLE,
+                             alt_api=False,
+                             multilingual=True,
                              # alt_fred_ns="http://fred-01/domain.owl#"
                              ))
