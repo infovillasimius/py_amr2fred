@@ -25,24 +25,48 @@ amr_text = """
 """
 # translate from AMR
 print(amr2fred.translate(amr_text, 
-    serialize=True, 
-    mode=mode, 
-    alt_fred_ns=None))
+                         serialize=True, 
+                         mode=mode, 
+                         alt_fred_ns=None))
 
 # translate from natural language
 print(amr2fred.translate(text="Four boys making pies", 
-    serialize=True, 
-    alt_api=False
-    mode=Glossary.RdflibMode.TURTLE, 
-    alt_fred_ns=None))
+                         serialize=True, 
+                         alt_api=False
+                         mode=Glossary.RdflibMode.TURTLE, 
+                         alt_fred_ns=None))
 
+# multilingual
 print(amr2fred.translate(text="Quattro ragazzi preparano torte", 
-    serialize=True, 
-    mode=Glossary.RdflibMode.TURTLE, 
-    alt_api=False, 
-    multilingual=True, 
-    alt_fred_ns=None))
-      
+                         serialize=True, 
+                         mode=Glossary.RdflibMode.TURTLE, 
+                         alt_api=False, 
+                         multilingual=True, 
+                         alt_fred_ns=None))
+
+# PNG image output !!Attention!! Graphviz must be installed! The temporary file will not be automatically deleted
+png_file = amr2fred.translate(text="Four boys making pies", serialize=True,
+                              mode=Glossary.RdflibMode.NT,
+                              alt_api=True,
+                              graphic="png",
+                              # alt_fred_ns="http://fred-01/domain.owl#")
+
+save_path = "output_image.png"
+with open(save_path, 'wb') as f:
+    f.write(png_file.read())
+png_file.close()
+os.remove(Path(png_file.name))
+
+# SVG image output !!Attention!! Graphviz must be installed!
+svg = amr2fred.translate(text="Four boys making pies", serialize=True,
+                         mode=Glossary.RdflibMode.NT,
+                         alt_api=True,
+                         graphic="svg",
+                         # alt_fred_ns="http://fred-01/domain.owl#")
+
+save_path = "output_image.svg"
+with open(save_path, 'w') as f:
+    f.write(svg)      
 ```
 
 
@@ -53,9 +77,8 @@ amr string in penman format
 
 ## Parameter [serialize]:
 
-[True] returns a string
-
-[False] returns a rdflib Graph
+- [True] returns a string
+- [False] returns a rdflib Graph
 
 
 ## Parameter [mode]:
@@ -65,7 +88,6 @@ amr string in penman format
 - Glossary.RdflibMode.XML
 - Glossary.RdflibMode.N3
 - Glossary.RdflibMode.JSON_LD
-
 
 
 ## Parameter [alt_fred_ns]: 
@@ -80,13 +102,26 @@ NL text to translate
 
 ## Parameter [alt_api]
 
-[True] the library will use alt. API
-
-[False] the library will use default API
+- [True] the library will use alt. API
+- [False] the library will use default API
 
 ## Parameter [multilingual]
 
-[True] the library will use multilingual API
+- [True] the library will use multilingual API
+- [False] the library will use "English only" API
 
-[False] the library will use "English only" API
+## Parameter [graphic]
+
+- [svg] return a svg string
+- [png] returns a png tmp_file
+
+## !!Attention!!
+
+- In order to generate graphical output (such as PNG or SVG files), you must have Graphviz installed on your system. You
+  can download and install it from [Graphviz's Official Website](https://graphviz.org/). If Graphviz is not installed,
+  the library will return a String containing the graph translated into the .dot graphic language instead of generating
+  the PNG or SVG graphical output.
+
+- When a PNG file is generated, the temporary file will not be automatically deleted. You need to manually manage or
+  delete the file after using it.
 
