@@ -24,14 +24,11 @@ amr_text = """
 	:ARG1 (a2 / arrest-01 :ARG1 h))))
 """
 # translate from AMR
-print(amr2fred.translate(amr_text, 
-                         serialize=True, 
-                         mode=mode))
+print(amr2fred.translate(amr_text, serialize=True, mode=mode))
 
 # translate from natural language
-print(amr2fred.translate(text="Four boys making pies", 
-                         serialize=True, 
-                         mode=Glossary.RdflibMode.TURTLE))
+mode = Glossary.RdflibMode.TURTLE
+print(amr2fred.translate(text="Four boys making pies", serialize=True, mode=mode))
 
 # multilingual
 print(amr2fred.translate(text="Quattro ragazzi preparano torte", 
