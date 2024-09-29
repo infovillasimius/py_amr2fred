@@ -26,30 +26,21 @@ amr_text = """
 # translate from AMR
 print(amr2fred.translate(amr_text, 
                          serialize=True, 
-                         mode=mode, 
-                         alt_fred_ns=None))
+                         mode=mode))
 
 # translate from natural language
 print(amr2fred.translate(text="Four boys making pies", 
                          serialize=True, 
-                         alt_api=False
-                         mode=Glossary.RdflibMode.TURTLE, 
-                         alt_fred_ns=None))
+                         mode=Glossary.RdflibMode.TURTLE))
 
 # multilingual
 print(amr2fred.translate(text="Quattro ragazzi preparano torte", 
                          serialize=True, 
-                         mode=Glossary.RdflibMode.TURTLE, 
-                         alt_api=False, 
-                         multilingual=True, 
-                         alt_fred_ns=None))
+                         mode=Glossary.RdflibMode.TURTLE,  
+                         multilingual=True))
 
 # PNG image output !!Attention!! Graphviz must be installed! The temporary file will not be automatically deleted
-png_file = amr2fred.translate(text="Four boys making pies", serialize=True,
-                              mode=Glossary.RdflibMode.NT,
-                              alt_api=True,
-                              graphic="png",
-                              # alt_fred_ns="http://fred-01/domain.owl#")
+png_file = amr2fred.translate(text="Four boys making pies", graphic="png")
 
 save_path = "output_image.png"
 with open(save_path, 'wb') as f:
@@ -58,11 +49,7 @@ png_file.close()
 os.remove(Path(png_file.name))
 
 # SVG image output !!Attention!! Graphviz must be installed!
-svg = amr2fred.translate(text="Four boys making pies", serialize=True,
-                         mode=Glossary.RdflibMode.NT,
-                         alt_api=True,
-                         graphic="svg",
-                         # alt_fred_ns="http://fred-01/domain.owl#")
+svg = amr2fred.translate(text="Four boys making pies", graphic="svg")
 
 save_path = "output_image.svg"
 with open(save_path, 'w') as f:
