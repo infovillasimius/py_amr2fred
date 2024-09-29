@@ -2,8 +2,12 @@ import csv
 import json
 import os
 import re
+import subprocess
+import tempfile
 import urllib.parse
 from enum import Enum
+from pathlib import Path
+from typing import IO
 
 import rdflib
 import requests
@@ -459,8 +463,8 @@ class Glossary:
     def read_adjectives():
         current_directory = os.path.dirname(__file__)
         try:
-            with open(os.path.join(current_directory, "adjectives.json"), "r", encoding="utf-8") as f:
-                adj = json.load(f)
+            with open(os.path.join(current_directory, "adjectives.json"), "r", encoding="utf-8") as adjectives_file:
+                adj = json.load(adjectives_file)
                 return adj
         except Exception as e:
             print(e)
@@ -916,6 +920,16 @@ class Node:
             self.status = node.status
             self.node_type = node.node_type
             self.verb = node.verb
+
+    def get_tree_status(self):
+        if Parser.endless > Glossary.ENDLESS:
+            return 1000000
+
+        somma = self.status.value  # Assuming `status` is an Enum and `ordinal()` is similar to `value` in Python Enum
+        for n in self.node_list:
+            somma += n.get_tree_status()
+
+        return somma
 
 
 class Propbank:
@@ -2499,6 +2513,117 @@ class RdfWriter:
         return Glossary.FRED_NS + var
 
 
+class DigraphWriter:
+
+    @staticmethod
+    def node_to_digraph(root: Node):
+        """
+        Returns root Node translated into .dot graphic language
+        :param root: Node
+        :return: str
+        """
+        # new_root = check_visibility(root)  # Uncomment if check_visibility is needed
+        new_root = root
+
+        digraph = Glossary.DIGRAPH_INI
+        digraph += DigraphWriter.to_digraph(new_root)
+        return digraph + Glossary.DIGRAPH_END
+
+    @staticmethod
+    def to_digraph(root: Node):
+        shape = "box"
+        if root.malformed:
+            shape = "ellipse"
+
+        digraph = f'"{root.var}" [label="{root.var}", shape={shape},'
+        if root.var.startswith(Glossary.FRED):
+            digraph += ' color="0.5 0.3 0.5"];\n'
+        else:
+            digraph += ' color="1.0 0.3 0.7"];\n'
+
+        if root.node_list and root.get_tree_status() == 0:
+            for a in root.node_list:
+                if a.visibility:
+                    shape = "ellipse" if a.malformed else "box"
+                    digraph += f'"{a.var}" [label="{a.var}", shape={shape},'
+                    if a.var.startswith(Glossary.FRED):
+                        digraph += ' color="0.5 0.3 0.5"];\n'
+                    else:
+                        digraph += ' color="1.0 0.3 0.7"];\n'
+                    if a.relation.lower() != Glossary.TOP.lower():
+                        digraph += f'"{root.var}" -> "{a.var}" [label="{a.relation}"];\n'
+                    digraph += DigraphWriter.to_digraph(a)
+
+        return digraph
+
+    @staticmethod
+    def to_png(root: Node):
+        """
+        Returns an image file (png) of the translated root node
+        :param root: translated root node
+        :return: image file (png)
+        """
+        tmp_out = None
+        tmp_out_path = None
+        try:
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.tmp')
+            tmp_out = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
+            tmp_out_path = Path(tmp_out.name)
+
+            with open(tmp.name, 'w') as buff:
+                buff.write(DigraphWriter.node_to_digraph(root))
+
+            subprocess.run(f'dot -Tpng {tmp.name} -o {tmp_out.name}', shell=True, check=True)
+
+            # tmp_out_path.unlink(missing_ok=True)
+            # tmp_out_path.touch(exist_ok=True)
+
+        except Exception as ex:
+            print(f"Error: {ex}")
+
+        return tmp_out, tmp_out_path
+
+    @staticmethod
+    def to_svg_string(root: Node) -> str:
+        """
+        Return a String containing an SVG image of translated root node
+        :param root: translated root node
+        :return: str containing an SVG image
+        """
+        output = []
+
+        try:
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.tmp')
+            with open(tmp.name, 'w') as buff:
+                buff.write(DigraphWriter.node_to_digraph(root))
+
+            process = subprocess.Popen(f'dot -Tsvg {tmp.name}', shell=True, stdout=subprocess.PIPE, text=True)
+            for line in process.stdout:
+                output.append(line)
+
+            process.wait()
+            tmp.close()
+            os.unlink(tmp.name)
+
+        except Exception as ex:
+            print(f"Error: {ex}")
+
+        return ''.join(output)
+
+    @staticmethod
+    def check_visibility(root: Node):
+        for n in root.node_list:
+            if not n.visibility:
+                n.set_status(Glossary.NodeStatus.REMOVE)
+
+        root.list = [n for n in root.node_list if n.status != Glossary.NodeStatus.REMOVE]
+
+        for n in root.node_list:
+            DigraphWriter.check_visibility(n)
+
+        return root
+
+
 class Amr2fred:
     def __init__(self):
         self.parser = Parser.get_parser()
@@ -2513,7 +2638,8 @@ class Amr2fred:
                   text: str | None = None,
                   alt_api: bool = False,
                   multilingual: bool = False,
-                  alt_fred_ns: str | None = None) -> str | Graph:
+                  graphic: str | None = None,
+                  alt_fred_ns: str | None = None) -> str | Graph | IO:
         if amr is None and text is None:
             return "Nothing to do!"
 
@@ -2530,11 +2656,20 @@ class Amr2fred:
                 return "Sorry, no amr!"
 
         root = self.parser.parse(amr)
-        self.writer.to_rdf(root)
-        if serialize:
-            return self.writer.serialize(mode)
+        if graphic is None:
+            self.writer.to_rdf(root)
+            if serialize:
+                return self.writer.serialize(mode)
+            else:
+                return self.writer.graph
         else:
-            return self.writer.graph
+            if graphic.lower() == "png":
+                file = DigraphWriter.to_png(root)
+                return file
+            else:
+                svg = DigraphWriter.to_svg_string(root)
+                return svg
+                pass
 
     def get_amr(self, text, alt_api, multilingual):
         if multilingual:
@@ -2556,21 +2691,50 @@ class Amr2fred:
 
 if __name__ == '__main__':
     amr2fred = Amr2fred()
-    # amr_text = """
-    # (c / charge-05 :ARG1 (h / he) :ARG2 (a / and :op1 (i / intoxicate-01 :ARG1 h :location (p / public))
-    # :op2 (r / resist-01 :ARG0 h :ARG1 (a2 / arrest-01 :ARG1 h))))
-    # """
-    # print(amr2fred.translate(amr=amr_text, serialize=True, mode=Glossary.RdflibMode.N3,
-    #                          # alt_fred_ns="http://fred-01.org/domain.owl#"
-    #                          ))
-    #
-    # print(amr2fred.translate(text="Four boys making pies", serialize=True, mode=Glossary.RdflibMode.TURTLE,
-    #                          alt_api=True
-    #                          # alt_fred_ns="http://fred-01/domain.owl#"
-    #                          ))
+    amr_text = """
+    (c / charge-05 :ARG1 (h / he) :ARG2 (a / and :op1 (i / intoxicate-01 :ARG1 h :location (p / public))
+    :op2 (r / resist-01 :ARG0 h :ARG1 (a2 / arrest-01 :ARG1 h))))
+    """
 
+    # AMR input in PENMAN format
+    print(amr2fred.translate(amr=amr_text, serialize=True, mode=Glossary.RdflibMode.N3,
+                             # alt_fred_ns="http://fred-01.org/domain.owl#"
+                             ))
+
+    # NL input text
+    print(amr2fred.translate(text="Four boys making pies", serialize=True, mode=Glossary.RdflibMode.NT,
+                             alt_api=True,
+                             # alt_fred_ns="http://fred-01/domain.owl#"
+                             ))
+
+    # multilingual
     print(amr2fred.translate(text="Quattro ragazzi preparano torte", serialize=True, mode=Glossary.RdflibMode.TURTLE,
                              alt_api=False,
                              multilingual=True,
                              # alt_fred_ns="http://fred-01/domain.owl#"
                              ))
+
+    # png image output
+    png_file, png_file_path = amr2fred.translate(text="Four boys making pies", serialize=True,
+                                                 mode=Glossary.RdflibMode.NT,
+                                                 alt_api=True,
+                                                 graphic="png",
+                                                 # alt_fred_ns="http://fred-01/domain.owl#"
+                                                 )
+    save_path = "output_image.png"
+    with open(save_path, 'wb') as f:
+        f.write(png_file.read())
+    png_file.close()
+    os.remove(png_file_path)
+
+    # svg image output
+    svg = amr2fred.translate(text="Four boys making pies", serialize=True,
+                             mode=Glossary.RdflibMode.NT,
+                             alt_api=True,
+                             graphic="svg",
+                             # alt_fred_ns="http://fred-01/domain.owl#"
+                             )
+
+    save_path = "output_image.svg"
+    with open(save_path, 'w') as f:
+        f.write(svg)
