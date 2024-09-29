@@ -2557,36 +2557,34 @@ class DigraphWriter:
         return digraph
 
     @staticmethod
-    def to_png(root: Node):
+    def to_png(root: Node) -> IO | str:
         """
-        Returns an image file (png) of the translated root node
+        Returns an image file (png) of the translated root node.
+        If Graphviz is not installed returns a String containing root Node translated into .dot graphic language
         :param root: translated root node
         :return: image file (png)
         """
-        tmp_out = None
-        tmp_out_path = None
+
         try:
             tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.tmp')
             tmp_out = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
-            tmp_out_path = Path(tmp_out.name)
 
             with open(tmp.name, 'w') as buff:
                 buff.write(DigraphWriter.node_to_digraph(root))
 
             subprocess.run(f'dot -Tpng {tmp.name} -o {tmp_out.name}', shell=True, check=True)
 
-            # tmp_out_path.unlink(missing_ok=True)
-            # tmp_out_path.touch(exist_ok=True)
-
         except Exception as ex:
             print(f"Error: {ex}")
+            return DigraphWriter.node_to_digraph(root)
 
-        return tmp_out, tmp_out_path
+        return tmp_out
 
     @staticmethod
     def to_svg_string(root: Node) -> str:
         """
-        Return a String containing an SVG image of translated root node
+        Return a String containing an SVG image of translated root node.
+        If Graphviz is not installed returns a String containing root Node translated into .dot graphic language
         :param root: translated root node
         :return: str containing an SVG image
         """
@@ -2607,6 +2605,7 @@ class DigraphWriter:
 
         except Exception as ex:
             print(f"Error: {ex}")
+            return DigraphWriter.node_to_digraph(root)
 
         return ''.join(output)
 
@@ -2667,9 +2666,7 @@ class Amr2fred:
                 file = DigraphWriter.to_png(root)
                 return file
             else:
-                svg = DigraphWriter.to_svg_string(root)
-                return svg
-                pass
+                return DigraphWriter.to_svg_string(root)
 
     def get_amr(self, text, alt_api, multilingual):
         if multilingual:
@@ -2714,20 +2711,20 @@ if __name__ == '__main__':
                              # alt_fred_ns="http://fred-01/domain.owl#"
                              ))
 
-    # png image output
-    png_file, png_file_path = amr2fred.translate(text="Four boys making pies", serialize=True,
-                                                 mode=Glossary.RdflibMode.NT,
-                                                 alt_api=True,
-                                                 graphic="png",
-                                                 # alt_fred_ns="http://fred-01/domain.owl#"
-                                                 )
+    # PNG image output !!Attention!! Graphviz must be installed! The temporary file will not be automatically deleted
+    png_file = amr2fred.translate(text="Four boys making pies", serialize=True,
+                                  mode=Glossary.RdflibMode.NT,
+                                  alt_api=True,
+                                  graphic="png",
+                                  # alt_fred_ns="http://fred-01/domain.owl#"
+                                  )
     save_path = "output_image.png"
     with open(save_path, 'wb') as f:
         f.write(png_file.read())
     png_file.close()
-    os.remove(png_file_path)
+    os.remove(Path(png_file.name))
 
-    # svg image output
+    # SVG image output !!Attention!! Graphviz must be installed!
     svg = amr2fred.translate(text="Four boys making pies", serialize=True,
                              mode=Glossary.RdflibMode.NT,
                              alt_api=True,
