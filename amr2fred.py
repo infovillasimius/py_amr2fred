@@ -2534,13 +2534,11 @@ class DigraphWriter:
         shape = "box"
         if root.malformed:
             shape = "ellipse"
-
         digraph = f'"{root.var}" [label="{root.var}", shape={shape},'
         if root.var.startswith(Glossary.FRED):
             digraph += ' color="0.5 0.3 0.5"];\n'
         else:
             digraph += ' color="1.0 0.3 0.7"];\n'
-
         if root.node_list and root.get_tree_status() == 0:
             for a in root.node_list:
                 if a.visibility:
@@ -2553,7 +2551,6 @@ class DigraphWriter:
                     if a.relation.lower() != Glossary.TOP.lower():
                         digraph += f'"{root.var}" -> "{a.var}" [label="{a.relation}"];\n'
                     digraph += DigraphWriter.to_digraph(a)
-
         return digraph
 
     @staticmethod
@@ -2564,20 +2561,15 @@ class DigraphWriter:
         :param root: translated root node
         :return: image file (png)
         """
-
         try:
             tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.tmp')
             tmp_out = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
-
             with open(tmp.name, 'w') as buff:
                 buff.write(DigraphWriter.node_to_digraph(root))
-
             subprocess.run(f'dot -Tpng {tmp.name} -o {tmp_out.name}', shell=True, check=True)
-
         except Exception as ex:
             print(f"Error: {ex}")
             return DigraphWriter.node_to_digraph(root)
-
         return tmp_out
 
     @staticmethod
@@ -2589,37 +2581,32 @@ class DigraphWriter:
         :return: str containing an SVG image
         """
         output = []
-
         try:
             tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.tmp')
             with open(tmp.name, 'w') as buff:
                 buff.write(DigraphWriter.node_to_digraph(root))
-
             process = subprocess.Popen(f'dot -Tsvg {tmp.name}', shell=True, stdout=subprocess.PIPE, text=True)
             for line in process.stdout:
                 output.append(line)
-
             process.wait()
             tmp.close()
             os.unlink(tmp.name)
-
         except Exception as ex:
             print(f"Error: {ex}")
             return DigraphWriter.node_to_digraph(root)
-
-        return ''.join(output)
+        if output:
+            return ''.join(output)
+        else:
+            return DigraphWriter.node_to_digraph(root)
 
     @staticmethod
     def check_visibility(root: Node):
         for n in root.node_list:
             if not n.visibility:
                 n.set_status(Glossary.NodeStatus.REMOVE)
-
         root.list = [n for n in root.node_list if n.status != Glossary.NodeStatus.REMOVE]
-
         for n in root.node_list:
             DigraphWriter.check_visibility(n)
-
         return root
 
 
@@ -2719,10 +2706,13 @@ if __name__ == '__main__':
                                   # alt_fred_ns="http://fred-01/domain.owl#"
                                   )
     save_path = "output_image.png"
-    with open(save_path, 'wb') as f:
-        f.write(png_file.read())
-    png_file.close()
-    os.remove(Path(png_file.name))
+    if hasattr(png_file, "read"):
+        with open(save_path, 'wb') as f:
+            f.write(png_file.read())
+        png_file.close()
+        os.remove(Path(png_file.name))
+    else:
+        print(png_file)
 
     # SVG image output !!Attention!! Graphviz must be installed!
     svg = amr2fred.translate(text="Four boys making pies", serialize=True,
