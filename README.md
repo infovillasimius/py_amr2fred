@@ -1,7 +1,7 @@
 # py_amr2fred
 
-From Abstract Meaning Representation AMR (https://amr.isi.edu/) to RDF, according to the syntax of
-FRED (http://wit.istc.cnr.it/stlab-tools/fred/)
+From Abstract Meaning Representation [AMR](https://amr.isi.edu/) to RDF, according
+to [FRED](http://wit.istc.cnr.it/stlab-tools/fred/)'s formal semantics and ontology design patterns.
 
 Python version of
 [amr2fred](http://framester.istc.cnr.it/amr-2-fred)'s core functions
