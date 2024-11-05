@@ -6,7 +6,6 @@ import subprocess
 import tempfile
 import urllib.parse
 from enum import Enum
-from pathlib import Path
 from typing import IO
 
 import rdflib
@@ -46,6 +45,7 @@ class Glossary:
     DUL_HAS_MEMBER = DUL + "hasMember"
     DUL_HAS_PRECONDITION = DUL + "hasPrecondition"
     DUL_HAS_AMOUNT = DUL + "hasAmount"
+    DUL_PRECEDES = DUL + "precedes"
 
     DUL_AGENT = DUL + "Agent"
     DUL_CONCEPT = DUL + "Concept"
@@ -200,7 +200,7 @@ class Glossary:
     AMR_VERB = "-[0-9]+$"
     AMR_VERB2 = ".*-[0-9]+$"
     AMR_ARG = ":arg."
-    AMR_INVERSE = ":+.+-of"
+    AMR_INVERSE = ":.+[0-9]-of"
     AMR_OP = ":op[0-9]+"
     ALL = ".+"
     AMR_SENTENCE = ":snt[0-9]$"
@@ -777,21 +777,34 @@ class Node:
                 return node
         return None
 
-    def get_inverses(self):
+    def get_inverses(self, nodes=None):
         """
         :rtype: list[Node]
         """
-        nodes: list[Node] = []
-        for node in self.node_list:
-            if (re.search(Glossary.AMR_INVERSE, node.relation) and
-                    node.relation != Glossary.AMR_PREP_ON_BEHALF_OF and
-                    node.relation != Glossary.AMR_CONSIST_OF and
-                    node.relation != Glossary.AMR_PART_OF and
-                    node.relation != Glossary.AMR_SUB_EVENT_OF and
-                    node.relation != Glossary.AMR_QUANT_OF and
-                    node.relation != Glossary.AMR_SUBSET_OF and
-                    node.status != Glossary.NodeStatus.REMOVE):
-                nodes.append(node)
+        if nodes is None:
+            nodes: list[Node] = []
+            for node in self.node_list:
+                if (re.match(Glossary.AMR_INVERSE, node.relation) and
+                        node.relation != Glossary.AMR_PREP_ON_BEHALF_OF and
+                        node.relation != Glossary.AMR_CONSIST_OF and
+                        node.relation != Glossary.AMR_PART_OF and
+                        node.relation != Glossary.AMR_SUB_EVENT_OF and
+                        node.relation != Glossary.AMR_QUANT_OF and
+                        node.relation != Glossary.AMR_SUBSET_OF and
+                        node.status != Glossary.NodeStatus.REMOVE):
+                    nodes.append(node)
+        else:
+            for node in self.node_list:
+                if (re.match(Glossary.AMR_INVERSE, node.relation) and
+                        node.relation != Glossary.AMR_PREP_ON_BEHALF_OF and
+                        node.relation != Glossary.AMR_CONSIST_OF and
+                        node.relation != Glossary.AMR_PART_OF and
+                        node.relation != Glossary.AMR_SUB_EVENT_OF and
+                        node.relation != Glossary.AMR_QUANT_OF and
+                        node.relation != Glossary.AMR_SUBSET_OF and
+                        node.status != Glossary.NodeStatus.REMOVE):
+                    nodes.append(node)
+                nodes = node.get_inverses(nodes)
         return nodes
 
     def make_equals(self, node=None, node_id=None):
@@ -1416,9 +1429,10 @@ class Parser:
     def inverse_checker(self, root: Node) -> Node:
         if not isinstance(root, Node):
             return root
-        inv_nodes = root.get_inverses()
+        inv_nodes = root.get_inverses([])
         if len(inv_nodes) == 0:
             return root
+        inv_nodes = root.get_inverses()
         if root.relation == Glossary.TOP and len(inv_nodes) == 1 and root.get_node_id() == 0:
             n = root.get_inverse()
             root.node_list.remove(n)
@@ -1429,12 +1443,28 @@ class Parser:
         else:
             for node in inv_nodes:
                 new_node = root.get_copy(relation=node.relation[0:-3])
+                if len(node.node_list) == 0 or (len(node.node_list) == 1 and node.get_instance() is not None):
+                    ancestor = self.get_verb_ancestor(root)
+                    new_parent = ancestor.get_copy(relation=Glossary.DUL_PRECEDES)
+                    self.nodes.append(new_parent)
+                    new_parent.set_status(Glossary.NodeStatus.AMR)
+                    node.add(new_parent)
                 self.nodes.append(new_node)
                 node.relation = Glossary.TOP
                 node.add(new_node)
         for i, node in enumerate(root.node_list):
             root.node_list[i] = self.inverse_checker(node)
         return root
+
+    def get_verb_ancestor(self, root: Node) -> Node | None:
+        node = root
+        while node.get_node_id() > 0 and node.parent is not None:
+            parent_ins = self.get_instance_alt(node.parent.get_node_id())
+            if parent_ins is not None and re.match(Glossary.AMR_VERB2, parent_ins.var):
+                return node.parent
+            elif node.parent is not None:
+                node = node.parent
+        return node
 
     def mod_verify(self, root: Node) -> Node:
         if not isinstance(root, Node):
@@ -1992,7 +2022,7 @@ class Parser:
     def residual(self, root: Node) -> Node:
         if not isinstance(root, Node):
             return root
-
+        # print(root)
         if Glossary.LITERAL in root.var:
             root.var = root.var.replace(Glossary.LITERAL, "")
             root.set_status(Glossary.NodeStatus.OK)
@@ -2671,57 +2701,3 @@ class Amr2fred:
                 uri = self.spring_uri + urllib.parse.quote_plus(text)
             amr = json.loads(requests.get(uri).text).get("penman")
         return amr
-
-
-if __name__ == '__main__':
-    amr2fred = Amr2fred()
-    amr_text = """
-    (c / charge-05 :ARG1 (h / he) :ARG2 (a / and :op1 (i / intoxicate-01 :ARG1 h :location (p / public))
-    :op2 (r / resist-01 :ARG0 h :ARG1 (a2 / arrest-01 :ARG1 h))))
-    """
-
-    # AMR input in PENMAN format
-    print(amr2fred.translate(amr=amr_text, serialize=True, mode=Glossary.RdflibMode.N3,
-                             # alt_fred_ns="http://fred-01.org/domain.owl#"
-                             ))
-
-    # NL input text
-    print(amr2fred.translate(text="Four boys making pies", serialize=True, mode=Glossary.RdflibMode.NT,
-                             alt_api=True,
-                             # alt_fred_ns="http://fred-01/domain.owl#"
-                             ))
-
-    # multilingual
-    print(amr2fred.translate(text="Quattro ragazzi preparano torte", serialize=True, mode=Glossary.RdflibMode.TURTLE,
-                             alt_api=False,
-                             multilingual=True,
-                             # alt_fred_ns="http://fred-01/domain.owl#"
-                             ))
-
-    # PNG image output !!Attention!! Graphviz must be installed! The temporary file will not be automatically deleted
-    png_file = amr2fred.translate(text="Four boys making pies", serialize=True,
-                                  mode=Glossary.RdflibMode.NT,
-                                  alt_api=True,
-                                  graphic="png",
-                                  # alt_fred_ns="http://fred-01/domain.owl#"
-                                  )
-    save_path = "output_image.png"
-    if hasattr(png_file, "read"):
-        with open(save_path, 'wb') as f:
-            f.write(png_file.read())
-        png_file.close()
-        os.remove(Path(png_file.name))
-    else:
-        print(png_file)
-
-    # SVG image output !!Attention!! Graphviz must be installed!
-    svg = amr2fred.translate(text="Four boys making pies", serialize=True,
-                             mode=Glossary.RdflibMode.NT,
-                             alt_api=True,
-                             graphic="svg",
-                             # alt_fred_ns="http://fred-01/domain.owl#"
-                             )
-
-    save_path = "output_image.svg"
-    with open(save_path, 'w') as f:
-        f.write(svg)
