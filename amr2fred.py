@@ -4,14 +4,23 @@ import os
 import re
 import subprocess
 import tempfile
+import time
 import urllib.parse
 from enum import Enum
 from typing import IO
 
+import nltk
 import rdflib
 import requests
-from rdflib import URIRef, Literal, Graph
+from SPARQLWrapper import SPARQLWrapper, POST, SPARQLWrapper2
+from rdflib import Graph, URIRef, Literal
+from rdflib.namespace import OWL, NamespaceManager, Namespace
 from unidecode import unidecode
+from wikimapper import WikiMapper
+
+nltk.download('wordnet')
+from nltk.corpus import wordnet
+import logging
 
 
 class Glossary:
@@ -467,7 +476,7 @@ class Glossary:
                 adj = json.load(adjectives_file)
                 return adj
         except Exception as e:
-            print(e)
+            logging.warning(e)
             return []
 
     ADJECTIVE = read_adjectives()
@@ -607,32 +616,24 @@ class Glossary:
     AMR_VALUE_INTERVAL = "value-interval"
 
     AMR_INSTANCES = ["thing", "person", "family", "animal", "language", "nationality", "ethnic-group", "regional-group",
-                     "religious-group", "political-movement",
-                     "organization", "company", "government-organization", "military", "criminal-organization",
-                     "political-party",
-                     "market-sector", "school", "university", "research-institute", "team", "league", "location",
-                     "city", "city-district",
-                     "county", "state", "province", "territory", "country", "local-region", "country-region",
-                     "world-region", "continent",
+                     "religious-group", "political-movement", "organization", "company", "government-organization",
+                     "military", "criminal-organization", "political-party", "market-sector", "school", "university",
+                     "research-institute", "team", "league", "location", "city", "city-district", "county", "state",
+                     "province", "territory", "country", "local-region", "country-region", "world-region", "continent",
                      "ocean", "sea", "lake", "river", "gulf", "bay", "strait", "canal", "peninsula", "mountain",
-                     "volcano", "valley", "canyon",
-                     "island", "desert", "forest", "moon", "planet", "star", "constellation", "facility", "airport",
-                     "station", "port", "tunnel",
-                     "bridge", "road", "railway-line", "canal", "building", "theater", "museum", "palace", "hotel",
-                     "worship-place", "market",
-                     "sports-facility", "park", "zoo", "amusement-park", "event", "incident", "natural-disaster",
-                     "earthquake", "war",
-                     "conference", "game", "festival", "product", "vehicle", "ship", "aircraft", "aircraft-type",
-                     "spaceship", "car-make",
-                     "work-of-art", "picture", "music", "show", "broadcast-program", "publication", "book", "newspaper",
-                     "magazine",
-                     "journal", "natural-object", "award", "law", "court-decision", "treaty", "music-key",
-                     "musical-note",
+                     "volcano", "valley", "canyon", "island", "desert", "forest", "moon", "planet", "star",
+                     "constellation", "facility", "airport", "station", "port", "tunnel", "bridge", "road",
+                     "railway-line", "canal", "building", "theater", "museum", "palace", "hotel", "worship-place",
+                     "market", "sports-facility", "park", "zoo", "amusement-park", "event", "incident",
+                     "natural-disaster", "earthquake", "war", "conference", "game", "festival", "product", "vehicle",
+                     "ship", "aircraft", "aircraft-type", "spaceship", "car-make", "work-of-art", "picture", "music",
+                     "show", "broadcast-program", "publication", "book", "newspaper", "magazine", "journal",
+                     "natural-object", "award", "law", "court-decision", "treaty", "music-key", "musical-note",
                      "food-dish", "writing-script", "variable", "program", "molecular-physical-entity",
-                     "small-molecule",
-                     "protein", "protein-family", "protein-segment", "amino-acid", "macro-molecular-complex", "enzyme",
-                     "nucleic-acid", "pathway", "gene", "dna-sequence", "cell", "cell-line", "species", "taxon",
-                     "disease", "medical-condition"]
+                     "small-molecule", "protein", "protein-family", "protein-segment", "amino-acid",
+                     "macro-molecular-complex", "enzyme", "nucleic-acid", "pathway", "gene", "dna-sequence", "cell",
+                     "cell-line", "species", "taxon", "disease", "medical-condition"]
+
     AMR_ALWAYS_INSTANCES = [AMR_DATE_ENTITY, AMR_DATE_INTERVAL, "percentage-entity", "phone-number-entity",
                             "email-address-entity", "url-entity", "score-entity", "string-entity", AMR_VALUE_INTERVAL]
 
@@ -1077,7 +1078,7 @@ class Parser:
                 amr = amr[fine:]
 
         except Exception as e:
-            print(e)
+            logging.warning(e)
             return None
 
         return word_list
@@ -1159,7 +1160,7 @@ class Parser:
                                 self.nodes.append(new_node)
 
                     except Exception as e:
-                        print(e)
+                        logging.warning(e)
                         new_node = Node(amr_list[i + 1], word)
                         root.add(new_node)
                         self.nodes.append(new_node)
@@ -2480,12 +2481,20 @@ class RdfWriter:
     def __init__(self):
         self.queue = []
         self.graph: Graph | None = None
+        self.not_visible_graph: Graph | None = None
+        self.namespace_manager = NamespaceManager(Graph(), bind_namespaces="rdflib")
         self.new_graph()
+
+        for i, name_space in enumerate(Glossary.NAMESPACE):
+            self.namespace_manager.bind(Glossary.PREFIX[i][:-1], name_space)
 
     def new_graph(self):
         self.graph = Graph()
-        for i, name_space in enumerate(Glossary.NAMESPACE):
-            self.graph.bind(Glossary.PREFIX[i][:-1], name_space)
+        # for i, name_space in enumerate(Glossary.NAMESPACE):
+        #     self.graph.bind(Glossary.PREFIX[i][:-1], name_space)
+        self.not_visible_graph = Graph()
+        self.graph.namespace_manager = self.namespace_manager
+        self.not_visible_graph.namespace_manager = self.namespace_manager
 
     def get_prefixes(self):
         names = []
@@ -2503,7 +2512,6 @@ class RdfWriter:
             n = self.queue.pop(0)
             for node in n.node_list:
                 self.queue.append(node)
-
             uri = self.get_uri(n.var)
 
             for n1 in n.node_list:
@@ -2525,6 +2533,8 @@ class RdfWriter:
                     else:
                         o = URIRef(self.get_uri(n1.var))
                     self.graph.add((s, p, o))
+                    if not n.visibility or not n1.visibility:
+                        self.not_visible_graph.add((s, p, o))
 
     def serialize(self, rdf_format: Glossary.RdflibMode) -> str:
         if rdf_format.value in Glossary.RDF_MODE:
@@ -2584,53 +2594,69 @@ class DigraphWriter:
         return digraph
 
     @staticmethod
-    def to_png(root: Node) -> IO | str:
+    def to_png(root: Node | Graph, not_visible_graph: Graph | None = None) -> IO | str:
         """
         Returns an image file (png) of the translated root node.
         If Graphviz is not installed returns a String containing root Node translated into .dot graphic language
-        :param root: translated root node
+        :param not_visible_graph: Graph containing not visible triples
+        :param root: translated root node or Graph containing triples
         :return: image file (png)
         """
+        if isinstance(root, Node):
+            digraph = DigraphWriter.node_to_digraph(root)
+        elif isinstance(root, Graph) and isinstance(not_visible_graph, Graph):
+            digraph = DigraphWriter.graph_to_digraph(root, not_visible_graph)
+            print("here")
+        else:
+            return ""
         try:
             tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.tmp')
             tmp_out = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
             with open(tmp.name, 'w') as buff:
-                buff.write(DigraphWriter.node_to_digraph(root))
+                buff.write(digraph)
+
             subprocess.run(f'dot -Tpng {tmp.name} -o {tmp_out.name}', shell=True, check=True)
-        except Exception as ex:
-            print(f"Error: {ex}")
-            return DigraphWriter.node_to_digraph(root)
+        except Exception as e:
+            logging.warning(e)
+            return digraph
         return tmp_out
 
     @staticmethod
-    def to_svg_string(root: Node) -> str:
+    def to_svg_string(root: Node | Graph, not_visible_graph: Graph | None = None) -> str:
         """
         Return a String containing an SVG image of translated root node.
         If Graphviz is not installed returns a String containing root Node translated into .dot graphic language
-        :param root: translated root node
+        :param not_visible_graph: Graph containing not visible triples
+        :param root: translated root node or Graph containing triples
         :return: str containing an SVG image
         """
         output = []
+        if isinstance(root, Node):
+            digraph = DigraphWriter.node_to_digraph(root)
+        elif isinstance(root, Graph) and isinstance(not_visible_graph, Graph):
+            digraph = DigraphWriter.graph_to_digraph(root, not_visible_graph)
+        else:
+            return ""
         try:
             tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.tmp')
             with open(tmp.name, 'w') as buff:
-                buff.write(DigraphWriter.node_to_digraph(root))
+                buff.write(digraph)
             process = subprocess.Popen(f'dot -Tsvg {tmp.name}', shell=True, stdout=subprocess.PIPE, text=True)
             for line in process.stdout:
                 output.append(line)
             process.wait()
             tmp.close()
             os.unlink(tmp.name)
-        except Exception as ex:
-            print(f"Error: {ex}")
-            return DigraphWriter.node_to_digraph(root)
+        except Exception as e:
+            logging.warning(e)
+            return digraph
         if output:
             return ''.join(output)
         else:
-            return DigraphWriter.node_to_digraph(root)
+            return digraph
 
     @staticmethod
-    def check_visibility(root: Node):
+    def check_visibility(root: Node) -> Node:
         for n in root.node_list:
             if not n.visibility:
                 n.set_status(Glossary.NodeStatus.REMOVE)
@@ -2638,6 +2664,489 @@ class DigraphWriter:
         for n in root.node_list:
             DigraphWriter.check_visibility(n)
         return root
+
+    @staticmethod
+    def graph_to_digraph(graph: Graph, not_visible_graph: Graph | None = None) -> str:
+        if not_visible_graph is None:
+            not_visible_graph = Graph
+        digraph = Glossary.DIGRAPH_INI
+        for s, p, o in graph:
+            if (s, p, o) not in not_visible_graph:
+                ss = graph.qname(s)
+                pp = graph.qname(p)
+                oo = graph.qname(o) if isinstance(o, URIRef) else o
+                oo = oo.replace("\"", "'")
+                shape = "box"
+                digraph += f'"{ss}" [label="{ss}", shape={shape},'
+                if ss.startswith(Glossary.FRED):
+                    digraph += ' color="0.5 0.3 0.5"];\n'
+                else:
+                    digraph += ' color="1.0 0.3 0.7"];\n'
+                digraph += f'"{oo}" [label="{oo}", shape={shape},'
+                if oo.startswith(Glossary.FRED):
+                    digraph += ' color="0.5 0.3 0.5"];\n'
+                else:
+                    digraph += ' color="1.0 0.3 0.7"];\n'
+                digraph += f'"{ss}" -> "{oo}" [label="{pp}"];\n'
+        return digraph + Glossary.DIGRAPH_END
+
+
+class TafPostProcessor:
+    current_directory = os.path.dirname(__file__)
+
+    def __init__(self):
+        self.dir_path = TafPostProcessor.current_directory
+        self.framester_sparql = 'http://etna.istc.cnr.it/framester2/sparql'
+        self.ewiser_wsd_url = 'https://arco.istc.cnr.it/ewiser/wsd'
+        self.usea_preprocessing_url = 'https://arco.istc.cnr.it/usea/api/preprocessing'
+        self.usea_wsd_url = 'https://arco.istc.cnr.it/usea/api/wsd'
+
+        self.namespace_manager = NamespaceManager(Graph(), bind_namespaces="rdflib")
+
+        self.prefixes = {
+            "fred": Namespace("http://www.ontologydesignpatterns.org/ont/fred/domain.owl#"),
+            "dul": Namespace("http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#"),
+            "d0": Namespace("http://www.ontologydesignpatterns.org/ont/d0.owl#"),
+            "boxer": Namespace("http://www.ontologydesignpatterns.org/ont/boxer/boxer.owl#"),
+            "boxing": Namespace("http://www.ontologydesignpatterns.org/ont/boxer/boxing.owl#"),
+            "quant": Namespace("http://www.ontologydesignpatterns.org/ont/fred/quantifiers.owl#"),
+            "vn.role": Namespace("http://www.ontologydesignpatterns.org/ont/vn/abox/role/vnrole.owl#"),
+            "vn.data": Namespace("http://www.ontologydesignpatterns.org/ont/vn/data/"),
+            "dbpedia": Namespace("http://dbpedia.org/resource/"),
+            "schemaorg": Namespace("http://schema.org/"),
+            "amr": Namespace("https://w3id.org/framester/amr/"),
+            "amrb": Namespace("https://w3id.org/framester/amrb/"),
+            "va": Namespace("http://verbatlas.org/"),
+            "bn": Namespace("http://babelnet.org/rdf/"),
+            "wn30schema": Namespace("https://w3id.org/framester/wn/wn30/schema/"),
+            "wn30": Namespace("https://w3id.org/framester/wn/wn30/instances/"),
+            "fschema": Namespace("https://w3id.org/framester/schema/"),
+            "fsdata": Namespace("https://w3id.org/framester/data/framestercore/"),
+            "pbdata": Namespace("https://w3id.org/framester/pb/data/"),
+            "pblr": Namespace("https://w3id.org/framester/data/propbank-3.4.0/LocalRole/"),
+            "pbrs": Namespace("https://w3id.org/framester/data/propbank-3.4.0/RoleSet/"),
+            "pbschema": Namespace("https://w3id.org/framester/pb/schema/"),
+            "fnframe": Namespace("https://w3id.org/framester/framenet/abox/frame/"),
+            "wd": Namespace("http://www.wikidata.org/entity/"),
+            "time": Namespace("https://www.w3.org/TR/xmlschema-2/#time"),
+            "caus": Namespace("http://www.ontologydesignpatterns.org/ont/causal/causal.owl#"),
+            "impact": Namespace("http://www.ontologydesignpatterns.org/ont/impact/impact.owl#"),
+            "is": Namespace("http://www.ontologydesignpatterns.org/ont/is/is.owl#"),
+            "mor": Namespace("http://www.ontologydesignpatterns.org/ont/values/moral.owl#"),
+            "coerce": Namespace("http://www.ontologydesignpatterns.org/ont/coercion/coerce.owl#")
+        }
+
+        for prefix, namespace in self.prefixes.items():
+            self.namespace_manager.bind(prefix, namespace)
+
+        self.wn_pos = {
+            "n": "noun",
+            "v": "verb",
+            "a": "adjective",
+            "s": "adjectivesatellite",
+            "r": "adverb"
+        }
+
+    def disambiguate(self, text: str, rdf_graph: Graph, namespace: str | None = Glossary.FRED_NS) -> Graph:
+        if isinstance(rdf_graph, Graph):
+            graph = rdf_graph
+            graph.namespace_manager = self.namespace_manager
+        else:
+            return rdf_graph
+
+        # SPARQL query to get the entities to disambiguate
+        query = """
+        SELECT DISTINCT ?entity
+        WHERE {
+            ?s ?p ?entity .
+            FILTER REGEX(STR(?entity), STR(?prefix))
+            FILTER NOT EXISTS {?entity a []}
+            FILTER NOT EXISTS {?entity owl:sameAs []}
+        }
+        """
+        result = graph.query(query, initBindings={"prefix": "^" + namespace + "[^_]+$"})
+        if not result:
+            logging.warning("Returning initial graph, no entities to be disambiguated")
+            return rdf_graph
+
+        # Map each entity "name" (last part of the URI after the prefix) to its URI
+        entities_to_uri = {}
+
+        for entity in result:
+            entity_name = entity["entity"][len(namespace):].lower()
+            entities_to_uri[entity_name] = entity["entity"]
+
+        # WSD over text
+        wsd_result = self.wsd(text)
+
+        disambiguated_entities = {}
+        lemma_to_definition = {}
+        for disambiguation in wsd_result:
+            lemma = disambiguation["lemma"]
+            if lemma in entities_to_uri:
+                lemma_to_definition[lemma] = disambiguation["wnSynsetDefinition"]
+                if lemma not in disambiguated_entities:
+                    disambiguated_entities[lemma] = {disambiguation["wnSynsetName"]}
+                else:
+                    disambiguated_entities[lemma].add(disambiguation["wnSynsetName"])
+
+        entity_to_disambiguation = {}
+        wn_uris = set()
+        lemma_to_wn30 = {}
+        for lemma, disambiguations in disambiguated_entities.items():
+            if len(disambiguations) == 1:
+                synset_name = next(iter(disambiguations))
+                synset_name_elements = synset_name.split(".")
+                first_lemma = wordnet.synset(synset_name).lemma_names()[0]
+                uri = f"https://w3id.org/framester/wn/wn30/instances/synset-{first_lemma}-{self.wn_pos[
+                    synset_name_elements[1]]}-{re.sub('^0+', '', synset_name_elements[2])}"
+                wn_uris.add(uri)
+                lemma_to_wn30[lemma] = uri
+
+        if not wn_uris:
+            logging.warning("Returning initial graph, no disambiguation found for entities")
+            return rdf_graph
+
+        wn_uris_values = ""
+        for wn_uri in wn_uris:
+            wn_uris_values += f"( <{wn_uri}> ) "
+        wn_uris_values = wn_uris_values.strip()
+
+        sparql_endpoint = SPARQLWrapper2(self.framester_sparql)
+
+        wn_30_query = f"""
+        SELECT DISTINCT ?wn
+        WHERE {{
+            VALUES (?wn) {{ {wn_uris_values} }}
+            ?wn a [] .
+        }}
+        """
+
+        sparql_endpoint.setQuery(wn_30_query)
+        sparql_endpoint.setMethod(POST)
+
+        wn_30_uris = set()
+        attempts = 0
+        while attempts < 3:
+            attempts += 1
+            try:
+                if attempts > 1:
+                    time.sleep(2)
+                wn_30_uris = {result["wn"].value for result in sparql_endpoint.query().bindings}
+                break
+            except Exception as e:
+                logging.warning(e)
+
+        if not wn_30_uris:
+            logging.warning("Returning initial graph, no wn30 entities in framester or failed to call framester")
+            return rdf_graph
+
+        # wn_31_uris = wn_uris.difference(wn_30_uris)
+        # wn_31_uris = {uri.replace("/wn30/", "/wn31/") for uri in wn_31_uris}
+
+        for lemma, uri_wn30 in lemma_to_wn30.items():
+            if uri_wn30 in wn_30_uris:
+                graph.add((entities_to_uri[lemma], OWL.equivalentClass, URIRef(uri_wn30)))
+                entity_to_disambiguation["<" + str(entities_to_uri[lemma]) + ">"] = "<" + uri_wn30 + ">"
+            else:
+                uri_wn31 = uri_wn30.replace("/wn30/", "/wn31/")
+                graph.add((entities_to_uri[lemma], OWL.equivalentClass, URIRef(uri_wn31)))
+                graph.add((URIRef(uri_wn31), URIRef("https://w3id.org/framester/wn/wn31/schema/gloss"),
+                           Literal(lemma_to_definition[lemma], lang="en-us")))
+                entity_to_disambiguation["<" + str(entities_to_uri[lemma]) + ">"] = "<" + uri_wn31 + ">"
+
+                # graph.add((entities_to_uri[lemma], OWL.equivalentClass, URIRef(uri)))
+                # entity_to_disambiguation["<"+str(entities_to_uri[lemma])+">"] = "<"+uri+">"
+
+        if not entity_to_disambiguation:
+            return rdf_graph
+
+        query_values = ""
+        for key, value in entity_to_disambiguation.items():
+            query_values += f"( {key} {value} ) "
+
+        query_values = query_values.strip()
+
+        sparql_endpoint = SPARQLWrapper(self.framester_sparql)
+
+        the_query = f"""
+        CONSTRUCT {{
+          ?entity rdfs:subClassOf ?lexname , ?d0dulType, ?dulQuality .
+          ?wnClass <https://w3id.org/framester/wn/wn30/schema/gloss> ?gloss .
+        }}
+        WHERE {{
+            SELECT DISTINCT * WHERE {{
+            {{
+            SELECT ?entity ?wnClass MAX(IF(?wnType IN (<https://w3id.org/framester/wn/wn30/schema/AdjectiveSynset>,
+            <https://w3id.org/framester/wn/wn30/schema/AdjectiveSatelliteSynset>,
+            <https://w3id.org/framester/wn/wn30/schema/AdverbSynset>),
+            URI("http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Quality"), ?undef)) as ?dulQuality
+            WHERE {{
+                VALUES (?entity ?wnClass) {{ {query_values} }}
+                ?wnClass a ?wnType .
+            }} group by ?entity ?wnClass
+            }}
+            OPTIONAL {{ ?wnClass <https://w3id.org/framester/wn/wn30/schema/lexname> ?lexname }}
+            OPTIONAL {{ ?wnClass <http://www.ontologydesignpatterns.org/ont/own3/own2dul.owl#d0> ?d0 }}
+            OPTIONAL {{ ?wnClass <https://w3id.org/framester/schema/ontoType> ?ontoType }}
+            BIND(COALESCE(?ontoType, ?d0) as ?d0dulType)
+            OPTIONAL {{ ?wnClass <https://w3id.org/framester/wn/wn30/schema/gloss> ?gloss }}
+            }}
+        }}
+        """
+
+        sparql_endpoint.setQuery(the_query)
+        sparql_endpoint.setMethod(POST)
+
+        attempts = 0
+        while attempts < 3:
+            attempts += 1
+            try:
+                if attempts > 1:
+                    time.sleep(2)
+                result_graph = sparql_endpoint.queryAndConvert()
+                graph += result_graph
+
+                return graph
+            except Exception as e:
+                logging.warning(e)
+
+        logging.warning("Returning initial graph: exception while querying SPARQL endpoint")
+        return rdf_graph
+
+    def wsd(self, text: str):
+        response = requests.post(self.ewiser_wsd_url, json={"text": text})
+        try:
+            result = response.json()
+        except Exception as e:
+            logging.warning(e)
+            result = []
+        return result
+
+    def disambiguate_usea(self, text: str, rdf_graph: Graph, namespace: str | None = Glossary.FRED_NS) -> Graph:
+        if isinstance(rdf_graph, Graph):
+            graph = rdf_graph
+            graph.namespace_manager = self.namespace_manager
+        else:
+            return rdf_graph
+
+        # SPARQL query to get the entities to disambiguate
+        query = """
+        SELECT DISTINCT ?entity
+        WHERE {
+            ?s ?p ?entity .
+            FILTER REGEX(STR(?entity), STR(?prefix))
+            FILTER NOT EXISTS {?entity a []}
+            FILTER NOT EXISTS {?entity owl:sameAs []}
+        }
+        """
+        result = graph.query(query, initBindings={"prefix": "^" + namespace + "[^_]+$"})
+        if not result:
+            logging.warning("Returning initial graph, no entities to be disambiguated")
+            return rdf_graph
+
+        # Map each entity "name" (last part of the URI after the prefix) to its URI
+        entities_to_uri = {}
+
+        for entity in result:
+            entity_name = entity["entity"][len(namespace):].lower()
+            entities_to_uri[entity_name] = entity["entity"]
+
+        # WSD over text
+        wsd_result = self.wsd_usea(text)
+
+        disambiguated_entities = {}
+        lemma_to_definition = {}
+        for disambiguation in wsd_result:
+            nltk_synset_name = disambiguation["nltkSynset"]
+            if nltk_synset_name != "O":
+                lemma = disambiguation["lemma"]
+                text = disambiguation["text"]
+                nltk_synset = wordnet.synset(nltk_synset_name)
+                definition = nltk_synset.definition()
+                # consider both lemma and text
+                if lemma in entities_to_uri:
+                    lemma_to_definition[lemma] = definition
+                    if lemma not in disambiguated_entities:
+                        disambiguated_entities[lemma] = {nltk_synset_name}
+                    else:
+                        disambiguated_entities[lemma].add(nltk_synset_name)
+                if text in entities_to_uri:
+                    lemma_to_definition[text] = definition
+                    if text not in disambiguated_entities:
+                        disambiguated_entities[text] = {nltk_synset_name}
+                    else:
+                        disambiguated_entities[text].add(nltk_synset_name)
+
+        entity_to_disambiguation = {}
+        wn_uris = set()
+        lemma_to_wn30 = {}
+        for lemma, disambiguations in disambiguated_entities.items():
+            if len(disambiguations) == 1:
+                synset_name = next(iter(disambiguations))
+                synset_name_elements = synset_name.split(".")
+                first_lemma = wordnet.synset(synset_name).lemma_names()[0]
+                uri = f"https://w3id.org/framester/wn/wn30/instances/synset-{first_lemma}-{self.wn_pos[
+                    synset_name_elements[1]]}-{re.sub('^0+', '', synset_name_elements[2])}"
+                wn_uris.add(uri)
+                lemma_to_wn30[lemma] = uri
+
+        if not wn_uris:
+            logging.warning("Returning initial graph, no disambiguation found for entities")
+            return rdf_graph
+
+        wn_uris_values = ""
+        for wn_uri in wn_uris:
+            wn_uris_values += f"( <{wn_uri}> ) "
+        wn_uris_values = wn_uris_values.strip()
+
+        sparql_endpoint = SPARQLWrapper2(self.framester_sparql)
+
+        wn_30_query = f"""
+        SELECT DISTINCT ?wn
+        WHERE {{
+            VALUES (?wn) {{ {wn_uris_values} }}
+            ?wn a [] .
+        }}
+        """
+
+        sparql_endpoint.setQuery(wn_30_query)
+        sparql_endpoint.setMethod(POST)
+
+        wn_30_uris = set()
+        attempts = 0
+        while attempts < 3:
+            attempts += 1
+            try:
+                if attempts > 1:
+                    time.sleep(2)
+                wn_30_uris = {result["wn"].value for result in sparql_endpoint.query().bindings}
+                break
+            except Exception as e:
+                logging.warning(e)
+
+        if not wn_30_uris:
+            logging.warning("Returning initial graph, no wn30 entities in framester or failed to call framester")
+            return rdf_graph
+
+        # wn_31_uris = wn_uris.difference(wn_30_uris)
+        # wn_31_uris = {uri.replace("/wn30/", "/wn31/") for uri in wn_31_uris}
+
+        for lemma, uri_wn30 in lemma_to_wn30.items():
+            if uri_wn30 in wn_30_uris:
+                graph.add((entities_to_uri[lemma], OWL.equivalentClass, URIRef(uri_wn30)))
+                entity_to_disambiguation["<" + str(entities_to_uri[lemma]) + ">"] = "<" + uri_wn30 + ">"
+            else:
+                uri_wn31 = uri_wn30.replace("/wn30/", "/wn31/")
+                graph.add((entities_to_uri[lemma], OWL.equivalentClass, URIRef(uri_wn31)))
+                graph.add((URIRef(uri_wn31), URIRef("https://w3id.org/framester/wn/wn31/schema/gloss"),
+                           Literal(lemma_to_definition[lemma], lang="en-us")))
+                entity_to_disambiguation["<" + str(entities_to_uri[lemma]) + ">"] = "<" + uri_wn31 + ">"
+
+                # graph.add((entities_to_uri[lemma], OWL.equivalentClass, URIRef(uri)))
+                # entity_to_disambiguation["<"+str(entities_to_uri[lemma])+">"] = "<"+uri+">"
+
+        if not entity_to_disambiguation:
+            return rdf_graph
+
+        query_values = ""
+        for key, value in entity_to_disambiguation.items():
+            query_values += f"( {key} {value} ) "
+
+        query_values = query_values.strip()
+
+        sparql_endpoint = SPARQLWrapper(self.framester_sparql)
+
+        the_query = f"""
+        CONSTRUCT {{
+          ?entity rdfs:subClassOf ?lexname , ?d0dulType, ?dulQuality .
+          ?wnClass <https://w3id.org/framester/wn/wn30/schema/gloss> ?gloss .
+        }}
+        WHERE {{
+            SELECT DISTINCT * WHERE {{
+            {{
+            SELECT ?entity ?wnClass MAX(IF(?wnType IN (<https://w3id.org/framester/wn/wn30/schema/AdjectiveSynset>,
+            <https://w3id.org/framester/wn/wn30/schema/AdjectiveSatelliteSynset>,
+            <https://w3id.org/framester/wn/wn30/schema/AdverbSynset>),
+            URI("http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Quality"), ?undef)) as ?dulQuality
+            WHERE {{
+                VALUES (?entity ?wnClass) {{ {query_values} }}
+                ?wnClass a ?wnType .
+            }} group by ?entity ?wnClass
+            }}
+            OPTIONAL {{ ?wnClass <https://w3id.org/framester/wn/wn30/schema/lexname> ?lexname }}
+            OPTIONAL {{ ?wnClass <http://www.ontologydesignpatterns.org/ont/own3/own2dul.owl#d0> ?d0 }}
+            OPTIONAL {{ ?wnClass <https://w3id.org/framester/schema/ontoType> ?ontoType }}
+            BIND(COALESCE(?ontoType, ?d0) as ?d0dulType)
+            OPTIONAL {{ ?wnClass <https://w3id.org/framester/wn/wn30/schema/gloss> ?gloss }}
+            }}
+        }}
+        """
+
+        sparql_endpoint.setQuery(the_query)
+        sparql_endpoint.setMethod(POST)
+
+        attempts = 0
+        while attempts < 3:
+            attempts += 1
+            try:
+                if attempts > 1:
+                    time.sleep(2)
+                result_graph = sparql_endpoint.queryAndConvert()
+                graph += result_graph
+                return graph
+            except Exception as e:
+                logging.warning(e)
+
+        logging.warning("Returning initial graph: exception while querying the SPARQL endpoint")
+        return rdf_graph
+
+    def wsd_usea(self, text: str):
+        # preprocess
+        text_input = {
+            "type": "text",
+            "content": text
+        }
+        response = requests.post(self.usea_preprocessing_url, json=text_input)
+        result = response.json()
+        # wsd
+        text_input = {
+            "sentence": result
+        }
+        response = requests.post(self.usea_wsd_url, json=text_input)
+        result = response.json()
+
+        return result["tokens"]
+
+    def link_to_wikidata(self, rdf_graph: Graph) -> Graph:
+        graph = rdf_graph
+        graph.namespace_manager = self.namespace_manager
+
+        # SPARQL query to get the entities aligned to dbpedia
+        query = """
+        SELECT ?entity ?dbpentity
+        WHERE {
+            ?entity owl:sameAs ?dbpentity .
+            FILTER REGEX(STR(?dbpentity), "http://dbpedia.org/resource/")
+        }
+        """
+        result = graph.query(query)
+        if not result:
+            logging.warning("Returning initial graph, no entities to be linked to wikidata")
+            return graph
+
+        for binding in result:
+            entity = binding["entity"]
+            dbpentity = binding["dbpentity"]
+            wiki_page_name = dbpentity[len("http://dbpedia.org/resource/"):]
+            # print(f"{entity} --> {dbpentity} --> {wikiPageName}")
+            # TODO implement verifying if db is present
+            mapper = WikiMapper(os.path.join(self.dir_path, "index_enwiki-latest.db"))
+            wikidata_id = mapper.url_to_id("https://www.wikipedia.org/wiki/" + wiki_page_name)
+            if wikidata_id:
+                graph.add((URIRef(entity), OWL.sameAs, URIRef("http://www.wikidata.org/entity/" + wikidata_id)))
+
+        return graph
 
 
 class Amr2fred:
@@ -2647,6 +3156,7 @@ class Amr2fred:
         self.spring_uri = "https://arco.istc.cnr.it/spring/text-to-amr?blinkify=true&sentence="
         self.spring_uni_uri = "https://nlp.uniroma1.it/spring/api/text-to-amr?sentence="
         self.usea_uri = "https://arco.istc.cnr.it/usea/api/amr"
+        self.taf = TafPostProcessor()
 
     def translate(self, amr: str | None = None,
                   mode: Glossary.RdflibMode = Glossary.RdflibMode.NT,
@@ -2655,6 +3165,7 @@ class Amr2fred:
                   alt_api: bool = False,
                   multilingual: bool = False,
                   graphic: str | None = None,
+                  post_processing: bool = True,
                   alt_fred_ns: str | None = None) -> str | Graph | IO:
         if amr is None and text is None:
             return "Nothing to do!"
@@ -2672,32 +3183,57 @@ class Amr2fred:
                 return "Sorry, no amr!"
 
         root = self.parser.parse(amr)
-        if graphic is None:
+
+        if post_processing:
             self.writer.to_rdf(root)
-            if serialize:
-                return self.writer.serialize(mode)
+            graph = self.writer.graph
+            if text is not None:
+                if multilingual:
+                    graph = self.taf.disambiguate_usea(text, graph)
+                else:
+                    graph = self.taf.disambiguate(text, graph)
+            self.writer.graph = self.taf.link_to_wikidata(graph)
+            if graphic is None:
+                if serialize:
+                    return self.writer.serialize(mode)
+                else:
+                    return self.writer.graph
             else:
-                return self.writer.graph
+                if graphic.lower() == "png":
+                    file = DigraphWriter.to_png(self.writer.graph, self.writer.not_visible_graph)
+                    return file
+                else:
+                    return DigraphWriter.to_svg_string(self.writer.graph, self.writer.not_visible_graph)
         else:
-            if graphic.lower() == "png":
-                file = DigraphWriter.to_png(root)
-                return file
+            if graphic is None:
+                self.writer.to_rdf(root)
+                if serialize:
+                    return self.writer.serialize(mode)
+                else:
+                    return self.writer.graph
             else:
-                return DigraphWriter.to_svg_string(root)
+                if graphic.lower() == "png":
+                    file = DigraphWriter.to_png(root)
+                    return file
+                else:
+                    return DigraphWriter.to_svg_string(root)
 
     def get_amr(self, text, alt_api, multilingual):
-        if multilingual:
-            uri = self.usea_uri
-            post_request = {
-                "sentence": {
-                    "text": text
+        try:
+            if multilingual:
+                uri = self.usea_uri
+                post_request = {
+                    "sentence": {
+                        "text": text
+                    }
                 }
-            }
-            amr = json.loads(requests.post(uri, json=post_request).text).get("amr_graph")
-        else:
-            if alt_api:
-                uri = self.spring_uni_uri + urllib.parse.quote_plus(text)
+                amr = json.loads(requests.post(uri, json=post_request).text).get("amr_graph")
             else:
-                uri = self.spring_uri + urllib.parse.quote_plus(text)
-            amr = json.loads(requests.get(uri).text).get("penman")
-        return amr
+                if alt_api:
+                    uri = self.spring_uni_uri + urllib.parse.quote_plus(text)
+                else:
+                    uri = self.spring_uri + urllib.parse.quote_plus(text)
+                amr = json.loads(requests.get(uri).text).get("penman")
+            return amr
+        except Exception as e:
+            logging.warning(e)

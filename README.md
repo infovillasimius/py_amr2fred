@@ -87,17 +87,22 @@ NL text to translate
 ## Parameter [alt_api]
 
 - [True] the library will use alt. API
-- [False] the library will use default API
+- [False] the library will use default API (default)
 
 ## Parameter [multilingual]
 
 - [True] the library will use multilingual API
-- [False] the library will use "English only" API
+- [False] the library will use "English only" API (default)
 
 ## Parameter [graphic]
 
 - [svg] return a svg string
 - [png] returns a png tmp_file
+
+## Parameter [post_processing]
+
+- [True] perform WSD and KG enrichment (default)
+- [False] do not perform WSD and KG enrichment
 
 ## !!Attention!!
 
