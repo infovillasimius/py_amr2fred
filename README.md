@@ -1,6 +1,6 @@
 # py_amr2fred
 
-From Abstract Meaning Representation to RDF
+From Text to Abstract Meaning Representation to RDF
 
 Python library version of
 [Text2AMR2FRED](https://arco.istc.cnr.it/txt-amr-fred/) incorporating the core functions of
