@@ -104,6 +104,11 @@ NL text to translate
 - [True] perform WSD and KG enrichment (default)
 - [False] do not perform WSD and KG enrichment
 
+The post-processing feature requires a database file for mapping Wikipedia IDs to WikiData IDs. The system will
+automatically download the required file (`index_enwiki-latest.db`, ~1815 MB uncompressed, ~832 MB compressed) during
+its first run. Ensure you have sufficient disk space and a stable internet connection before running the system for the
+first time.
+
 ## !!Attention!!
 
 - In order to generate graphical output (such as PNG or SVG files), you must have Graphviz installed on your system. You

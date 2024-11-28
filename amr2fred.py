@@ -22,6 +22,10 @@ nltk.download('wordnet')
 from nltk.corpus import wordnet
 import logging
 
+logging.basicConfig()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
 
 class Glossary:
     ENDLESS = 1000
@@ -476,7 +480,7 @@ class Glossary:
                 adj = json.load(adjectives_file)
                 return adj
         except Exception as e:
-            logging.warning(e)
+            logger.warning(e)
             return []
 
     ADJECTIVE = read_adjectives()
@@ -1078,7 +1082,7 @@ class Parser:
                 amr = amr[fine:]
 
         except Exception as e:
-            logging.warning(e)
+            logger.warning(e)
             return None
 
         return word_list
@@ -1160,7 +1164,7 @@ class Parser:
                                 self.nodes.append(new_node)
 
                     except Exception as e:
-                        logging.warning(e)
+                        logger.warning(e)
                         new_node = Node(amr_list[i + 1], word)
                         root.add(new_node)
                         self.nodes.append(new_node)
@@ -2617,7 +2621,7 @@ class DigraphWriter:
 
             subprocess.run(f'dot -Tpng {tmp.name} -o {tmp_out.name}', shell=True, check=True)
         except Exception as e:
-            logging.warning(e)
+            logger.warning(e)
             return digraph
         return tmp_out
 
@@ -2648,7 +2652,7 @@ class DigraphWriter:
             tmp.close()
             os.unlink(tmp.name)
         except Exception as e:
-            logging.warning(e)
+            logger.warning(e)
             return digraph
         if output:
             return ''.join(output)
@@ -2766,7 +2770,7 @@ class TafPostProcessor:
         """
         result = graph.query(query, initBindings={"prefix": "^" + namespace + "[^_]+$"})
         if not result:
-            logging.warning("Returning initial graph, no entities to be disambiguated")
+            logger.info("Returning initial graph, no entities to be disambiguated")
             return rdf_graph
 
         # Map each entity "name" (last part of the URI after the prefix) to its URI
@@ -2804,7 +2808,7 @@ class TafPostProcessor:
                 lemma_to_wn30[lemma] = uri
 
         if not wn_uris:
-            logging.warning("Returning initial graph, no disambiguation found for entities")
+            logger.info("Returning initial graph, no disambiguation found for entities")
             return rdf_graph
 
         wn_uris_values = ""
@@ -2835,10 +2839,10 @@ class TafPostProcessor:
                 wn_30_uris = {result["wn"].value for result in sparql_endpoint.query().bindings}
                 break
             except Exception as e:
-                logging.warning(e)
+                logger.warning(e)
 
         if not wn_30_uris:
-            logging.warning("Returning initial graph, no wn30 entities in framester or failed to call framester")
+            logger.info("Returning initial graph, no wn30 entities in framester or failed to call framester")
             return rdf_graph
 
         # wn_31_uris = wn_uris.difference(wn_30_uris)
@@ -2909,9 +2913,9 @@ class TafPostProcessor:
 
                 return graph
             except Exception as e:
-                logging.warning(e)
+                logger.warning(e)
 
-        logging.warning("Returning initial graph: exception while querying SPARQL endpoint")
+        logger.info("Returning initial graph: exception while querying SPARQL endpoint")
         return rdf_graph
 
     def wsd(self, text: str):
@@ -2919,7 +2923,7 @@ class TafPostProcessor:
         try:
             result = response.json()
         except Exception as e:
-            logging.warning(e)
+            logger.warning(e)
             result = []
         return result
 
@@ -2942,7 +2946,7 @@ class TafPostProcessor:
         """
         result = graph.query(query, initBindings={"prefix": "^" + namespace + "[^_]+$"})
         if not result:
-            logging.warning("Returning initial graph, no entities to be disambiguated")
+            logger.info("Returning initial graph, no entities to be disambiguated")
             return rdf_graph
 
         # Map each entity "name" (last part of the URI after the prefix) to its URI
@@ -2992,7 +2996,7 @@ class TafPostProcessor:
                 lemma_to_wn30[lemma] = uri
 
         if not wn_uris:
-            logging.warning("Returning initial graph, no disambiguation found for entities")
+            logger.info("Returning initial graph, no disambiguation found for entities")
             return rdf_graph
 
         wn_uris_values = ""
@@ -3023,10 +3027,10 @@ class TafPostProcessor:
                 wn_30_uris = {result["wn"].value for result in sparql_endpoint.query().bindings}
                 break
             except Exception as e:
-                logging.warning(e)
+                logger.warning(e)
 
         if not wn_30_uris:
-            logging.warning("Returning initial graph, no wn30 entities in framester or failed to call framester")
+            logger.info("Returning initial graph, no wn30 entities in framester or failed to call framester")
             return rdf_graph
 
         # wn_31_uris = wn_uris.difference(wn_30_uris)
@@ -3096,9 +3100,9 @@ class TafPostProcessor:
                 graph += result_graph
                 return graph
             except Exception as e:
-                logging.warning(e)
+                logger.warning(e)
 
-        logging.warning("Returning initial graph: exception while querying the SPARQL endpoint")
+        logger.info("Returning initial graph: exception while querying the SPARQL endpoint")
         return rdf_graph
 
     def wsd_usea(self, text: str):
@@ -3119,6 +3123,35 @@ class TafPostProcessor:
         return result["tokens"]
 
     def link_to_wikidata(self, rdf_graph: Graph) -> Graph:
+        db_file_name = os.path.join(self.dir_path, "index_enwiki-latest.db")
+        zip_db_file_name = os.path.join(self.dir_path, "index_enwiki-latest.zip")
+        if not os.path.isfile(db_file_name) and not os.path.isfile(zip_db_file_name):
+            if not os.path.isfile(zip_db_file_name):
+                from tqdm import tqdm
+                try:
+                    url = "http://hrilabdemo.ddns.net/index_enwiki-latest.zip"
+                    response = requests.get(url, stream=True)
+                    logger.info("Downloading index_enwiki-latest db...")
+                    with open(zip_db_file_name, "wb") as handle:
+                        for data in tqdm(response.iter_content(chunk_size=1048576), total=832, desc="MBytes"):
+                            handle.write(data)
+                except Exception as e:
+                    logger.warning(e)
+                    return rdf_graph
+
+        if not os.path.isfile(db_file_name) and os.path.isfile(zip_db_file_name):
+            from zipfile import ZipFile
+            with ZipFile(zip_db_file_name, 'r') as zObject:
+                logger.info("Extracting db from zip-file...")
+                zObject.extract("index_enwiki-latest.db", path=self.dir_path)
+                zObject.close()
+
+        if not os.path.isfile(db_file_name):
+            return rdf_graph
+
+        if os.path.isfile(zip_db_file_name):
+            os.remove(zip_db_file_name)
+
         graph = rdf_graph
         graph.namespace_manager = self.namespace_manager
 
@@ -3132,7 +3165,7 @@ class TafPostProcessor:
         """
         result = graph.query(query)
         if not result:
-            logging.warning("Returning initial graph, no entities to be linked to wikidata")
+            logger.info("Returning initial graph, no entities to be linked to wikidata")
             return graph
 
         for binding in result:
@@ -3141,7 +3174,7 @@ class TafPostProcessor:
             wiki_page_name = dbpentity[len("http://dbpedia.org/resource/"):]
             # print(f"{entity} --> {dbpentity} --> {wikiPageName}")
             # TODO implement verifying if db is present
-            mapper = WikiMapper(os.path.join(self.dir_path, "index_enwiki-latest.db"))
+            mapper = WikiMapper(db_file_name)
             wikidata_id = mapper.url_to_id("https://www.wikipedia.org/wiki/" + wiki_page_name)
             if wikidata_id:
                 graph.add((URIRef(entity), OWL.sameAs, URIRef("http://www.wikidata.org/entity/" + wikidata_id)))
@@ -3236,4 +3269,4 @@ class Amr2fred:
                 amr = json.loads(requests.get(uri).text).get("penman")
             return amr
         except Exception as e:
-            logging.warning(e)
+            logger.warning(e)
