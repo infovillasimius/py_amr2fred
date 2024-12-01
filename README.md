@@ -57,19 +57,32 @@ with open(save_path, 'w') as f:
     f.write(svg)      
 ```
 
+## Amr2fred class parameters:
 
-## Parameter [amr]:
+### Parameter [txt2amr_uri]
+
+Specifies the API URI of an alternative Spring-based "txt2amr" translator. This parameter is optional and only required
+if users wish to override the default resource. It should be used in conjunction with the [alt_api] parameter of
+the [translate] method.
+
+### Parameter [m_txt2amr_uri]
+
+Specifies the API URI of an alternative multilingual USeA-based "txt2amr" translator. This parameter is optional and
+only required if users wish to override the default multilingual resource. It should be used in conjunction with
+the [multilingual] parameter of the [translate] method.
+
+## [translate] method parameters:
+
+### Parameter [amr]:
 
 amr string in penman format
 
-
-## Parameter [serialize]:
+### Parameter [serialize]:
 
 - [True] returns a string
 - [False] returns a rdflib Graph
 
-
-## Parameter [mode]:
+### Parameter [mode]:
 
 - Glossary.RdflibMode.TURTLE
 - Glossary.RdflibMode.NT
@@ -77,33 +90,30 @@ amr string in penman format
 - Glossary.RdflibMode.N3
 - Glossary.RdflibMode.JSON_LD
 
-
-## Parameter [alt_fred_ns]: 
+### Parameter [alt_fred_ns]:
 
 Alternate Uri for base Fred NS
 
-
-## Parameter [text]
+### Parameter [text]
 
 NL text to translate 
 
-
-## Parameter [alt_api]
+### Parameter [alt_api]
 
 - [True] the library will use alt. API
 - [False] the library will use default API (default)
 
-## Parameter [multilingual]
+### Parameter [multilingual]
 
 - [True] the library will use multilingual API
 - [False] the library will use "English only" API (default)
 
-## Parameter [graphic]
+### Parameter [graphic]
 
 - [svg] return a svg string
 - [png] returns a png tmp_file
 
-## Parameter [post_processing]
+### Parameter [post_processing]
 
 - [True] perform WSD and KG enrichment (default)
 - [False] do not perform WSD and KG enrichment

@@ -3183,12 +3183,14 @@ class TafPostProcessor:
 
 
 class Amr2fred:
-    def __init__(self):
+    def __init__(self, txt2amr_uri: str = None, m_txt2amr_uri: str = None):
         self.parser = Parser.get_parser()
         self.writer = RdfWriter()
         self.spring_uri = "https://arco.istc.cnr.it/spring/text-to-amr?blinkify=true&sentence="
-        self.spring_uni_uri = "https://nlp.uniroma1.it/spring/api/text-to-amr?sentence="
-        self.usea_uri = "https://arco.istc.cnr.it/usea/api/amr"
+
+        self.spring_uni_uri = ("https://nlp.uniroma1.it/spring/api/text-to-amr?sentence="
+                               if txt2amr_uri is None else txt2amr_uri)
+        self.usea_uri = ("https://arco.istc.cnr.it/usea/api/amr" if m_txt2amr_uri is None else m_txt2amr_uri)
         self.taf = TafPostProcessor()
 
     def translate(self, amr: str | None = None,
