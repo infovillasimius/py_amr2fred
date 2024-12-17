@@ -19,6 +19,8 @@ pip install py_amr2fred
 ## Use:
 
 ```
+import os
+from pathlib import Path
 from py_amr2fred import *
 amr2fred = Amr2fred()
 mode = Glossary.RdflibMode.N3
