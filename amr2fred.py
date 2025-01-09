@@ -2802,8 +2802,7 @@ class TafPostProcessor:
                 synset_name = next(iter(disambiguations))
                 synset_name_elements = synset_name.split(".")
                 first_lemma = wordnet.synset(synset_name).lemma_names()[0]
-                uri = f"https://w3id.org/framester/wn/wn30/instances/synset-{first_lemma}-{self.wn_pos[
-                    synset_name_elements[1]]}-{re.sub('^0+', '', synset_name_elements[2])}"
+                uri = f"https://w3id.org/framester/wn/wn30/instances/synset-{first_lemma}-{self.wn_pos[synset_name_elements[1]]}-{re.sub('^0+', '', synset_name_elements[2])}"
                 wn_uris.add(uri)
                 lemma_to_wn30[lemma] = uri
 
