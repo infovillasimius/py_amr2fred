@@ -9,6 +9,10 @@ It enables seamless transformation of natural language text into RDF/OWL Knowled
 through Abstract Meaning Representation ([AMR](https://amr.isi.edu/)), according
 to [FRED](http://wit.istc.cnr.it/stlab-tools/fred/)'s formal semantics and ontology design patterns.
 
+![Read the Docs Badge](https://img.shields.io/badge/docs-read%20the%20docs-blue)
+
+For full documentation, visit: [Read the Docs](https://py-amr2fred.readthedocs.io/)
+
 
 Install:
 
