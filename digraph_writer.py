@@ -15,13 +15,25 @@ logger.setLevel(logging.INFO)
 
 
 class DigraphWriter:
+    """
+    A utility class for converting nodes and RDF graphs into Graphviz DOT format and generating graphical representations.
+
+    This class provides methods to translate hierarchical structures of `Node` objects into the DOT language,
+    allowing for visualization as PNG or SVG images. Additionally, it supports RDF graphs by generating DOT
+    representations and linking nodes accordingly.
+    """
 
     @staticmethod
     def node_to_digraph(root: Node):
         """
-        Returns root Node translated into .dot graphic language
-        :param root: Node
-        :return: str
+        Convert a root `Node` into DOT graph format.
+
+        This method translates a given hierarchical node structure into the Graphviz DOT language.
+
+        :param root: The root node to be converted.
+        :type root: Node
+        :return: A string representing the graph in DOT format.
+        :rtype: str
         """
         # new_root = check_visibility(root)  # Uncomment if check_visibility is needed
         new_root = root
@@ -31,7 +43,17 @@ class DigraphWriter:
         return digraph + Glossary.DIGRAPH_END
 
     @staticmethod
-    def to_digraph(root: Node):
+    def to_digraph(root: Node) -> str:
+        """
+        Recursively generate a DOT representation of a `Node` and its connected sub-nodes.
+
+        Nodes are styled based on their properties, such as `malformed` status and specific prefixes.
+
+        :param root: The root node of the graph.
+        :type root: Node
+        :return: A string in DOT format representing the hierarchical structure.
+        :rtype: str
+        """
         shape = "box"
         if root.malformed:
             shape = "ellipse"
@@ -57,17 +79,22 @@ class DigraphWriter:
     @staticmethod
     def to_png(root: Node | Graph, not_visible_graph: Graph | None = None) -> IO | str:
         """
-        Returns an image file (png) of the translated root node.
-        If Graphviz is not installed returns a String containing root Node translated into .dot graphic language
-        :param not_visible_graph: Graph containing not visible triples
-        :param root: translated root node or Graph containing triples
-        :return: image file (png)
+        Generate a PNG image of the graph representation.
+
+        If Graphviz is installed, this method returns an image file of the translated root node or RDF graph.
+        If Graphviz is not installed, it returns the DOT representation as a string.
+
+        :param root: The root node or RDF graph to be visualized.
+        :type root: Node | Graph
+        :param not_visible_graph: An optional graph containing hidden triples.
+        :type not_visible_graph: Graph, optional
+        :return: A PNG image file if Graphviz is available, otherwise a DOT-format string.
+        :rtype: IO | str
         """
         if isinstance(root, Node):
             digraph = DigraphWriter.node_to_digraph(root)
         elif isinstance(root, Graph) and isinstance(not_visible_graph, Graph):
             digraph = DigraphWriter.graph_to_digraph(root, not_visible_graph)
-            print("here")
         else:
             return ""
         try:
@@ -85,11 +112,17 @@ class DigraphWriter:
     @staticmethod
     def to_svg_string(root: Node | Graph, not_visible_graph: Graph | None = None) -> str:
         """
-        Return a String containing an SVG image of translated root node.
-        If Graphviz is not installed returns a String containing root Node translated into .dot graphic language
-        :param not_visible_graph: Graph containing not visible triples
-        :param root: translated root node or Graph containing triples
-        :return: str containing an SVG image
+        Generate an SVG representation of the graph.
+
+        If Graphviz is installed, it returns an SVG image as a string. Otherwise, it returns the DOT format
+        representation.
+
+        :param root: The root node or RDF graph to be visualized.
+        :type root: Node | Graph
+        :param not_visible_graph: An optional graph containing hidden triples.
+        :type not_visible_graph: Graph, optional
+        :return: A string containing the SVG representation of the graph.
+        :rtype: str
         """
         output = []
         if isinstance(root, Node):
@@ -118,6 +151,16 @@ class DigraphWriter:
 
     @staticmethod
     def check_visibility(root: Node) -> Node:
+        """
+        Update the visibility status of nodes in the graph.
+
+        This method iterates through the node hierarchy and removes nodes marked as invisible.
+
+        :param root: The root node of the structure.
+        :type root: Node
+        :return: The updated root node with visibility-filtered sub-nodes.
+        :rtype: Node
+        """
         for n in root.node_list:
             if not n.visibility:
                 n.set_status(Glossary.NodeStatus.REMOVE)
@@ -128,6 +171,19 @@ class DigraphWriter:
 
     @staticmethod
     def graph_to_digraph(graph: Graph, not_visible_graph: Graph | None = None) -> str:
+        """
+        Convert an RDF graph into DOT graph format.
+
+        This method processes the RDF triples and translates them into DOT representation,
+        applying styles based on specific prefixes.
+
+        :param graph: The RDF graph to be converted.
+        :type graph: Graph
+        :param not_visible_graph: An optional graph containing hidden triples to be excluded.
+        :type not_visible_graph: Graph, optional
+        :return: A string in DOT format representing the RDF graph.
+        :rtype: str
+        """
         if not_visible_graph is None:
             not_visible_graph = Graph
         digraph = Glossary.DIGRAPH_INI

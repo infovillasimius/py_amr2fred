@@ -18,6 +18,13 @@ logger.setLevel(logging.INFO)
 
 
 class Amr2fred:
+    """
+        A class for transforming AMR (Abstract Meaning Representation) into RDF (Resource Description Framework)
+        representations compliant with OWL ontologies.
+
+        :param txt2amr_uri: Custom URI for the text-to-AMR service.
+        :param m_txt2amr_uri: Custom URI for the multilingual text-to-AMR service.
+    """
     def __init__(self, txt2amr_uri: str = None, m_txt2amr_uri: str = None):
         self.parser = Parser.get_parser()
         self.writer = RdfWriter()
@@ -37,6 +44,20 @@ class Amr2fred:
                   graphic: str | None = None,
                   post_processing: bool = True,
                   alt_fred_ns: str | None = None) -> str | Graph | IO:
+        """
+            Transforms an AMR representation or input text into an RDF graph or serialized format.
+
+            :param amr: The AMR graph representation as a string.
+            :param mode: The serialization format for RDF output (e.g., NT, TTL, RDF/XML).
+            :param serialize: Whether to return the serialized RDF graph.
+            :param text: The input text to be converted into AMR if `amr` is not provided.
+            :param alt_api: Whether to use an alternative text-to-AMR API.
+            :param multilingual: Whether to use the multilingual text-to-AMR service.
+            :param graphic: If specified, returns a graphical representation ('png' or 'svg').
+            :param post_processing: Whether to apply post-processing to enhance the RDF graph.
+            :param alt_fred_ns: Alternative namespace for FRED RDF generation.
+            :return: Serialized RDF graph, RDFLib Graph object, or graphical representation.
+        """
         if amr is None and text is None:
             return "Nothing to do!"
 
@@ -88,7 +109,15 @@ class Amr2fred:
                 else:
                     return DigraphWriter.to_svg_string(root)
 
-    def get_amr(self, text, alt_api, multilingual):
+    def get_amr(self, text: str, alt_api: bool, multilingual: bool) -> str:
+        """
+            Retrieves the AMR representation of the given text using the appropriate API.
+
+            :param text: Input text to convert into AMR.
+            :param alt_api: Whether to use the predefined alternative API or a custom one provided during class instantiation.
+            :param multilingual: Whether to use the multilingual text-to-AMR service.
+            :return: The AMR representation as a string.
+        """
         try:
             if multilingual:
                 uri = self.usea_uri
@@ -106,4 +135,4 @@ class Amr2fred:
                 amr = json.loads(requests.get(uri).text).get("penman")
             return amr
         except Exception as e:
-            logger.warning(e)
+            logger.warning(str(e))

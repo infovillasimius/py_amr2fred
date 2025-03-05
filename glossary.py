@@ -11,6 +11,13 @@ logger.setLevel(logging.INFO)
 
 
 class Glossary:
+    """
+    A collection of constants and predefined terms used throughout the py_amr2fred library.
+
+    This class provides ontology namespaces, prefixes, error messages, and various configuration
+    values needed for RDF generation, parsing, and semantic processing. It serves as a central
+    reference for terminology used in the system.
+    """
     ENDLESS = 1000
     ENDLESS2 = 800
     RECURSIVE_ERROR = " recursive error! "
@@ -422,6 +429,20 @@ class Glossary:
     RDF_MODE = ["json-ld", "n3", "nquads", "nt", "hext", "pretty-xml", "trig", "trix", "turtle", "longturtle", "xml"]
 
     class RdflibMode(Enum):
+        """
+        Enumeration of RDF serialization formats supported by rdflib.
+
+        This enum defines various output formats for serializing RDF graphs,
+        allowing users to choose the preferred representation for their data.
+
+        Available formats:
+
+            - JSON_LD: JSON-LD (Linked Data format in JSON)
+            - N3: Notation3 format
+            - NT: N-Triples format
+            - XML: RDF/XML format
+            - TURTLE: Turtle format (compact and human-readable)
+        """
         JSON_LD = "json-ld"
         N3 = "n3"
         NT = "nt"
@@ -456,7 +477,20 @@ class Glossary:
     QUOTE = "\""
 
     @staticmethod
-    def read_adjectives():
+    def read_adjectives() -> list[str]:
+        """
+        Reads a JSON file containing adjectives from the current directory.
+
+        This method attempts to load a JSON file named "adjectives.json" located in
+        the same directory as the script. The file is expected to contain a list of
+        adjectives. If successful, the list is returned. In case of an error (e.g.,
+        file not found or invalid JSON format), the error is logged, and an empty list
+        is returned.
+
+            :return: A list of adjectives from the JSON file, or an empty list if an error occurs.
+            :rtype: list[str]
+            :raises Exception: Any exceptions raised during file reading or JSON parsing will be logged.
+        """
         current_directory = os.path.dirname(__file__)
         try:
             with open(os.path.join(current_directory, "adjectives.json"), "r", encoding="utf-8") as adjectives_file:
@@ -563,6 +597,19 @@ class Glossary:
 
     # Node types in AMR
     class NodeType(Enum):
+        """
+        Enumeration of node types in an AMR graph.
+
+        Represents different categories of nodes based on their linguistic roles
+        or their origin in the transformation process.
+
+            - NOUN: Represents a noun node.
+            - VERB: Represents a verb node.
+            - OTHER: Represents other types of nodes.
+            - AMR2FRED: Nodes specific to the AMR2FRED transformation.
+            - FRED: Nodes specific to the FRED framework.
+            - COMMON: Common nodes shared across different transformations.
+        """
         NOUN = 0
         VERB = 1
         OTHER = 2
@@ -572,6 +619,16 @@ class Glossary:
 
     # Node status(used in parser)
     class NodeStatus(Enum):
+        """
+        Enumeration of node statuses used in the AMR parsing process.
+
+        Defines the processing state of a node within the parser.
+
+            - OK: Node is correctly processed.
+            - AMR: Node is part of an AMR structure.
+            - ERROR: Node contains an error.
+            - REMOVE: Node is marked for removal.
+        """
         OK = 0
         AMR = 1
         ERROR = 2
@@ -579,6 +636,17 @@ class Glossary:
 
     # Field names of propbankframe table
     class PropbankFrameFields(Enum):
+        """
+            Enumeration of field names in the PropBank frame table.
+
+            Defines the attributes used to represent PropBank frames.
+
+            - PB_Frame: The PropBank frame identifier.
+            - PB_FrameLabel: The label associated with the frame.
+            - PB_Role: The role within the frame.
+            - FN_Frame: The corresponding FrameNet frame.
+            - VA_Frame: The corresponding VerbAtlas frame.
+        """
         PB_Frame = 0
         PB_FrameLabel = 1
         PB_Role = 2
@@ -587,6 +655,19 @@ class Glossary:
 
     # Field names of propbankrole table
     class PropbankRoleFields(Enum):
+        """
+            Enumeration of field names in the PropBank role table.
+
+            Defines the attributes related to PropBank role mappings.
+
+            - PB_Frame: The PropBank frame identifier.
+            - PB_Role: The role identifier.
+            - PB_RoleLabel: The label associated with the role.
+            - PB_GenericRole: The generalized role category.
+            - PB_Tr: Transformation-related information.
+            - PB_ARG: Argument identifier.
+            - VA_Role: The corresponding VerbAtlas role.
+        """
         PB_Frame = 0
         PB_Role = 1
         PB_RoleLabel = 2

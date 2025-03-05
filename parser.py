@@ -9,10 +9,28 @@ from propbank import Propbank
 
 
 class Parser:
-    __parser = None
+    """
+    A class for parsing Abstract Meaning Representation (AMR) strings and transforming them
+    into nodes representing logical structure.
 
-    # endless = 0
-    # endless2 = 0
+    This class provides methods to parse an AMR string, manipulate its nodes, and process
+    multi-sentence, recursive, and logical error handling. It also integrates semantic
+    information through specific transformations.
+
+    Attributes:
+        - nodes (list): A list of nodes generated during parsing.
+        - nodes_copy (list): A copy of the node list.
+        - couples (list): A list of couples (pairs of related nodes).
+        - removed (list): A list of nodes removed during parsing.
+        - to_add (list): A list of nodes to be added during parsing.
+        - vars (list): A list of variables used during parsing.
+        - root_copy (Node): A copy of the root node.
+        - topic_flag (bool): A flag indicating whether the topic node should be added.
+        - __parser (Parser): The singleton instance of the Parser class.
+
+    """
+
+    __parser = None
 
     def __init__(self):
         self.nodes = []
@@ -28,6 +46,10 @@ class Parser:
     @staticmethod
     def get_parser():
         """
+        Returns the singleton instance of the Parser class.
+
+        If an instance of the Parser class does not exist, it will create and return one.
+
         :rtype: Parser
         """
         if Parser.__parser is None:
@@ -35,6 +57,9 @@ class Parser:
         return Parser.__parser
 
     def reinitialise(self):
+        """
+        Resets the internal structures before a new parsing run.
+        """
         self.nodes = []
         self.nodes_copy = []
         self.couples = []
@@ -45,6 +70,23 @@ class Parser:
         self.topic_flag = True
 
     def string2array(self, amr: str) -> list[str] | None:
+        """
+        Converts an AMR string into a list of words, normalizing and processing special characters
+        as necessary.
+
+        This method processes the input AMR string and splits it into a list of words. It handles
+        normalizations such as converting words to lowercase and replacing special characters like
+        spaces, quotes, and underscores. Words that are quoted are processed to preserve their
+        meaning in the AMR structure.
+
+        If an error occurs during processing (such as a malformed string), the method logs a warning
+        and returns `None`.
+
+        :param amr: The AMR string to convert.
+        :type amr: str
+        :return: A list of words extracted from the AMR string, or `None` if an error occurs.
+        :rtype: list[str] | None
+        """
         word_list = []
         amr = self.normalize(amr)
 
@@ -83,6 +125,25 @@ class Parser:
 
     @staticmethod
     def normalize(amr: str) -> str:
+        """
+        Normalizes an AMR string by replacing newline characters and adjusting spacing.
+
+        This method processes the input AMR string by performing several normalization steps:
+
+        - Converts carriage returns and newline characters to spaces.
+        - Strips leading and trailing whitespace.
+        - Adds spaces around parentheses and slashes for consistent formatting.
+        - Replaces tabs with spaces.
+        - Collapses multiple consecutive spaces into a single space.
+
+        The resulting string is easier to process and ensures a consistent format for further
+        manipulation and analysis.
+
+        :param amr: The AMR string to normalize.
+        :type amr: str
+        :return: The normalized AMR string.
+        :rtype: str
+        """
         re.sub("\r\n|\r|\n", " ", amr)
         amr = amr.replace("\r", " ").replace("\n", " ")
         amr = amr.strip()
@@ -96,9 +157,27 @@ class Parser:
 
     @staticmethod
     def strip_accents(amr: str) -> str:
+        """
+        Strips any accent marks from the given AMR string.
+
+        :param amr: The AMR string to process.
+        :type amr: str
+        :return: The AMR string with accents removed.
+        :rtype: str
+        """
         return unidecode(amr)
 
-    def get_nodes(self, relation, amr_list) -> Node | None:
+    def get_nodes(self, relation: str, amr_list: list[str]) -> Node | None:
+        """
+        Retrieves nodes from the AMR string based on the provided top node relation.
+
+        :param relation: The top node relation.
+        :type relation: str
+        :param amr_list: The array of words representing the AMR structure.
+        :type amr_list: list[str]
+        :return: The root node or None if an error occurs.
+        :rtype: Node | None
+        """
         if amr_list is None or len(amr_list) == 0:
             return None
         root = Node(var=amr_list[1], relation=relation)
@@ -168,6 +247,19 @@ class Parser:
         return root
 
     def check(self, root: Node) -> Node | None:
+        """
+        Recursively checks the status of nodes in the given root node and removes those that are not in an "OK" status.
+
+        This method traverses the node list of the given root node, checking the status of each node. If a node's
+        status is not "OK", it is removed from the list and added to a `removed` list. If the node has child nodes,
+        the method is recursively applied to them as well. The method returns the updated root node, or `None` if the
+        root node is not in an "OK" status.
+
+        :param root: The root node to check and process.
+        :type root: Node
+        :return: The updated root node, or `None` if the root node's status is not "OK".
+        :rtype: Node | None
+        """
         if not isinstance(root, Node):
             return root
         if root.status != Glossary.NodeStatus.OK:
@@ -181,6 +273,25 @@ class Parser:
         return root
 
     def parse(self, amr: str) -> Node:
+        """
+        Parses the given AMR string and returns the root node of the AMR representation.
+
+        This method processes the AMR string in multiple stages:
+            1. Strips accents from the input string.
+            2. Retrieves the root node.
+            3. Applies corrections for missing instances.
+            4. Handles multi-sentence AMR representations.
+            5. Translates relations and values into FRED format.
+            6. Elaborates on verbs and resolves ambiguities.
+            7. Adds the special TOPIC node if necessary.
+            8. Corrects residual parsing errors.
+            9. Integrates logical triples into the representation.
+
+        :param amr: The AMR string to parse.
+        :type amr: str
+        :return: The root node of the parsed AMR.
+        :rtype: Node
+        """
         self.reinitialise()
         amr = self.strip_accents(amr)
         root = self.get_nodes(Glossary.TOP, self.string2array(amr))
@@ -217,6 +328,18 @@ class Parser:
         return root
 
     def fred_translate(self, root: Node) -> Node:
+        """
+        Translates the relations and values in the AMR string into FRED format.
+
+        This method processes the root node and its children by applying several translation checks and transformations
+        to convert AMR-specific relations and values into the corresponding FRED format. It handles various aspects,
+        including operations, list verifications, inverses, modifiable relations, and instance elaborations.
+
+        :param root: The root node of the AMR to be translated.
+        :type root: Node
+        :return: The root node after being processed and translated into FRED format.
+        :rtype: Node
+        """
         if not isinstance(root, Node):
             return root
         elif len(root.node_list) == 0:
@@ -255,6 +378,14 @@ class Parser:
         return root
 
     def check_missing_instances(self, root: Node) -> Node:
+        """
+        Checks for missing instances in the AMR and attempts to correct them.
+
+        :param root: The root node of the AMR.
+        :type root: Node
+        :return: The root node after corrections, if necessary.
+        :rtype: Node
+        """
         if not isinstance(root, Node):
             return root
         if root.relation != Glossary.INSTANCE and root.get_instance() is None:
@@ -266,6 +397,14 @@ class Parser:
         return root
 
     def multi_sentence(self, root: Node) -> Node:
+        """
+        Handles multi-sentence cases in the AMR string.
+
+        :param root: The root node of the AMR.
+        :type root: Node
+        :return: The root node after multi-sentence processing.
+        :rtype: Node
+        """
         if not isinstance(root, Node):
             return root
         if root.get_instance() is not None and root.get_instance().var == Glossary.AMR_MULTI_SENTENCE:
@@ -283,6 +422,14 @@ class Parser:
         return root
 
     def logic_triples_integration(self, root: Node) -> Node:
+        """
+        Integrates logical triples into the AMR representation.
+
+        :param root: The root node of the AMR.
+        :type root: Node
+        :return: The root node with integrated logical triples.
+        :rtype: Node
+        """
         if not isinstance(root, Node):
             return root
 
@@ -333,17 +480,50 @@ class Parser:
         return root
 
     def set_equals(self, root: Node):
+        """
+        Sets the `var` attribute of nodes that are equal to the given root node.
+
+        This method iterates over nodes that are considered equal to the given `root` node,
+        and sets their `var` attribute to match the `var` attribute of the `root` node.
+
+        :param root: The root node whose `var` value will be propagated to equal nodes.
+        :type root: Node
+        """
         if not isinstance(root, Node):
             return
         for node in self.get_equals(root):
             node.var = root.var
 
     def get_equals(self, root: Node) -> list[Node]:
+        """
+        Retrieves all nodes that are equal to the given root node.
+
+        This method checks for equality between the `root` node and other nodes in the
+        current context and returns a list of nodes that are considered equal to the root.
+
+        :param root: The root node to compare against other nodes.
+        :type root: Node
+        :return: A list of nodes that are equal to the given root node.
+        :rtype: list[Node]
+        """
         if not isinstance(root, Node):
             return []
         return [node for node in self.nodes if node.__eq__(root)]
 
     def dom_verify(self, root: Node) -> Node:
+        """
+        Verifies and processes the AMR domain (`:domain`) for the given root node.
+
+        This method checks if the root node has a `:domain` child and processes it
+        according to specific rules. If a domain node is found, it adjusts its relation
+        and variable name, assigns appropriate semantic roles, and updates the root node
+        accordingly. The method also ensures recursive verification of all child nodes.
+
+        :param root: The root node of the AMR structure to be verified.
+        :type root: Node
+        :return: The root node after domain verification.
+        :rtype: Node
+        """
         if not isinstance(root, Node):
             return root
         dom = root.get_child(Glossary.AMR_DOMAIN)
@@ -379,6 +559,17 @@ class Parser:
         return root
 
     def control_ops(self, root: Node) -> Node:
+        """
+        Verifies and processes operational (`:opX`) relations in the AMR structure.
+
+        This method checks if the root node contains `:opX` relations and ensures they
+        follow specific semantic rules.
+
+        :param root: The root node of the AMR structure to be processed.
+        :type root: Node
+        :return: The root node after verifying and adjusting `:opX` relations.
+        :rtype: Node
+        """
         if not isinstance(root, Node):
             return root
         ins = root.get_instance()
@@ -405,6 +596,18 @@ class Parser:
         return root
 
     def li_verify(self, root: Node) -> Node:
+        """
+        Processes and verifies `:li` (list item) relations in the AMR structure.
+
+        This method ensures that `:li` relations are properly handled by transforming them
+        into a structured format. Recursively processes child nodes to ensure consistent list handling.
+
+        :param root: The root node of the AMR structure to be processed.
+        :type root: Node
+        :return: The root node after verifying and adjusting `:li` relations.
+        :rtype: Node
+        """
+
         if not isinstance(root, Node):
             return root
         if root.relation == Glossary.AMR_LI:
@@ -426,6 +629,24 @@ class Parser:
         return root
 
     def inverse_checker(self, root: Node) -> Node:
+        """
+        Identifies and processes inverse relations within the AMR structure.
+
+        This method ensures that inverse relations (i.e., those ending with `-of`) are handled correctly.
+        It performs the following operations:
+
+        - Identifies nodes with inverse relations.
+        - If the root node has a `:top` relation and only one inverse, it restructures the hierarchy.
+        - Creates new nodes where necessary, ensuring proper relation consistency.
+        - Adjusts parent-child relationships by reassigning inverse relations.
+        - Recursively processes child nodes to handle all inverse relations.
+
+        :param root: The root node of the AMR structure.
+        :type root: Node
+        :return: The root node after processing inverse relations.
+        :rtype: Node
+        """
+
         if not isinstance(root, Node):
             return root
         inv_nodes = root.get_inverses([])
@@ -456,6 +677,24 @@ class Parser:
         return root
 
     def get_verb_ancestor(self, root: Node) -> Node | None:
+        """
+        Retrieves the closest verb ancestor of the given node.
+
+        This method traverses up the node hierarchy to find the nearest ancestor
+        whose instance matches a verb pattern defined in `Glossary.AMR_VERB2`.
+        It follows these steps:
+
+        - Starts from the given `root` node.
+        - Moves up the hierarchy while the node ID is greater than 0 and the parent exists.
+        - Checks if the parent's instance matches the AMR verb pattern.
+        - Returns the first matching parent node or the last traversed node if no match is found.
+
+        :param root: The node from which to start the search.
+        :type root: Node
+        :return: The nearest ancestor node that represents a verb, or None if none is found.
+        :rtype: Node | None
+        """
+
         node = root
         while node.get_node_id() > 0 and node.parent is not None:
             parent_ins = self.get_instance_alt(node.parent.get_node_id())
@@ -466,6 +705,26 @@ class Parser:
         return node
 
     def mod_verify(self, root: Node) -> Node:
+        """
+        Verifies and adjusts modifier nodes in the AMR structure.
+
+        This method processes modifier nodes (`:mod`) within the given `root` node, ensuring
+        proper categorization and transformation based on their type. The verification
+        involves:
+
+        - Checking if the root instance is a verb, which influences modifier handling.
+        - Identifying domain (`:domain`) and modifier (`:mod`) child nodes.
+        - Handling cases where the modifier includes `:degree` and `:compared-to`,
+          leading to instance modification.
+        - Differentiating between adjectives, demonstratives, and other modifiers to assign
+          the appropriate RDF/OWL relation (`dul:hasQuality`, `rdf:type`, etc.).
+        - Ensuring correct subclass and association relationships for non-verb modifiers.
+
+        :param root: The root node from which to start modifier verification.
+        :type root: Node
+        :return: The modified root node with verified and transformed modifiers.
+        :rtype: Node
+        """
         if not isinstance(root, Node):
             return root
         flag = True
@@ -567,6 +826,35 @@ class Parser:
         return root
 
     def list_elaboration(self, root: Node) -> Node:
+        """
+        Processes an Abstract Meaning Representation (AMR) tree by refining its structure,
+        updating node relations, and handling specific linguistic constructs.
+
+        This method applies various transformations and normalizations to the nodes of the input
+        AMR tree, modifying their relations, variables, and statuses based on predefined rules.
+        It ensures consistency in the representation and resolves linguistic constructs such as
+        coordination, date intervals, pronouns, demonstratives, and modality markers.
+
+        The function performs the following operations:
+
+        - Calls `root_elaboration`, `date_entity`, and `prep_control` to preprocess the root node.
+        - Iterates through the child nodes (`node_list`) and applies transformation rules.
+        - Handles special cases such as:
+
+            - Converting Wikidata links.
+            - Processing negation, modality, and polarity markers.
+            - Handling personal pronouns and demonstratives.
+            - Normalizing names and entity references.
+            - Adjusting relations for AMR constructs like `:quant`, `:age`, and `:degree`.
+            - Ensuring RDF/OWL compliance where necessary.
+
+        - Updates `self.to_add` with new nodes when required.
+
+        :param root: The root node of the AMR tree to be processed.
+        :type root: Node
+        :return: The transformed AMR tree with updated nodes and relations.
+        :rtype: Node
+        """
         if not isinstance(root, Node) or len(root.node_list) == 0:
             return root
 
@@ -892,6 +1180,20 @@ class Parser:
         return root
 
     def add_parent_list(self, root: Node) -> Node:
+        """
+        Recursively updates the given AMR tree by ensuring that all parent nodes
+        referenced in `parent_list` are included in the main `node_list`.
+
+        This method identifies nodes with non-empty `parent_list` and verifies whether
+        their parent nodes are already present in `root.node_list`. If a parent node
+        is missing, it is added to maintain structural consistency. The function then
+        recursively applies this process to all child nodes.
+
+        :param root: The root node of the AMR tree to be processed.
+        :type root: Node
+        :return: The updated AMR tree with parent nodes properly integrated.
+        :rtype: Node
+        """
         if not isinstance(root, Node):
             return root
         to_add = root.get_nodes_with_parent_list_not_empty()
@@ -910,6 +1212,21 @@ class Parser:
         return root
 
     def instance_elaboration(self, root: Node) -> Node:
+        """
+        Processes an AMR (Abstract Meaning Representation) tree node to refine its instance representation,
+        adjust its status, and classify it based on predefined linguistic patterns.
+
+        This method ensures proper handling of AMR instances by:
+        - Updating the status of nodes based on their relation type.
+        - Identifying verb instances and adjusting their representation.
+        - Modifying instance variables and assigning appropriate types.
+        - Recursively processing child nodes.
+
+        :param root: The root node of the AMR tree to be processed.
+        :type root: Node
+        :return: The updated AMR tree with refined instance handling.
+        :rtype: Node
+        """
         if not isinstance(root, Node):
             return root
         if root.status == Glossary.NodeStatus.OK and root.relation.startswith(
@@ -964,6 +1281,14 @@ class Parser:
         return root
 
     def verbs_elaboration(self, root: Node) -> Node:
+        """
+        Elaborates on verbs and resolves ambiguities for predicate arguments.
+
+        :param root: The root node of the AMR.
+        :type root: Node
+        :return: The root node after verb elaboration.
+        :rtype: Node
+        """
         if not isinstance(root, Node):
             return root
         lemma = root.verb
@@ -1012,6 +1337,14 @@ class Parser:
         return root
 
     def topic(self, root: Node) -> Node:
+        """
+        Determines if a special topic node needs to be added to the AMR.
+
+        :param root: The root node of the AMR.
+        :type root: Node
+        :return: The root node after topic handling.
+        :rtype: Node
+        """
         if not isinstance(root, Node):
             return root
         if self.topic_flag:
@@ -1019,6 +1352,14 @@ class Parser:
         return root
 
     def residual(self, root: Node) -> Node:
+        """
+        Attempts to correct residual errors in the parsed AMR.
+
+        :param root: The root node of the AMR.
+        :type root: Node
+        :return: The root node after error correction.
+        :rtype: Node
+        """
         if not isinstance(root, Node):
             return root
         # print(root)
@@ -1126,12 +1467,29 @@ class Parser:
         return root
 
     def get_instance_alt(self, node_id) -> Node | None:
+        """
+        Get the instance associated with the given node ID, if it exists.
+
+        :param node_id: The ID of the node whose instance is to be retrieved.
+        :type node_id: int
+        :return: The instance associated with the node, or None if no instance is found.
+        :rtype: Node or None
+        """
         for node in self.nodes_copy:
             if node.get_node_id() == node_id and node.get_instance() is not None:
                 return node.get_instance()
         return None
 
     def treat_instance(self, root: Node):
+        """
+            Process and modify the given root node's instance and update all equal nodes.
+
+            This method updates the `var` of all nodes that are equal to the root node
+            and changes the status of the instance associated with the root node to REMOVE.
+
+            :param root: The root node to be treated.
+            :type root: Node
+            """
         if not isinstance(root, Node):
             return
         for node in self.get_equals(root):
@@ -1140,6 +1498,15 @@ class Parser:
             root.get_instance().status = Glossary.NodeStatus.REMOVE
 
     def remove_instance(self, root: Node):
+        """
+        Remove the instance associated with the given root node.
+
+        This method updates the `var` of all nodes equal to the root node and removes
+        the instance from the node list of the root node.
+
+        :param root: The root node from which the instance should be removed.
+        :type root: Node
+        """
         if not isinstance(root, Node):
             return
         for node in self.get_equals(root):
@@ -1148,7 +1515,20 @@ class Parser:
             root.node_list.remove(root.get_instance())
 
     @staticmethod
-    def is_verb(var, node_list=None) -> bool:
+    def is_verb(var, node_list: list[Node] | None = None) -> bool:
+        """
+        Check if the provided variable corresponds to a verb.
+
+        This method checks if the given variable represents a verb by either searching
+        Propbank frames or by checking a list of nodes if provided.
+
+        :param var: The variable (usually a string) to be checked.
+        :type var: str
+        :param node_list: Optional list of nodes to search through (only used if `var` is a string).
+        :type node_list: list of Node, optional
+        :return: True if the variable corresponds to a verb, False otherwise.
+        :rtype: bool
+        """
         prb = Propbank.get_propbank()
         if node_list is None and isinstance(var, str):
             result = prb.frame_find(Glossary.PB_ROLESET + var, Glossary.PropbankFrameFields.PB_Frame)
@@ -1157,7 +1537,18 @@ class Parser:
             result = prb.list_find(var, node_list)
             return result is not None and len(result) > 0
 
-    def occurrence(self, word) -> int:
+    def occurrence(self, word: str) -> int:
+        """
+        Calculate and update the occurrence count of a given word.
+
+        This method updates the occurrence count of the word in the `couples` list
+        and appends a new entry if the word is not already present.
+
+        :param word: The word whose occurrence is to be calculated.
+        :type word: str
+        :return: The updated occurrence count for the word.
+        :rtype: int
+        """
         occurrence_num = 1
         for couple in self.couples:
             if word == couple.get_word():
@@ -1169,6 +1560,17 @@ class Parser:
 
     @staticmethod
     def args(root: Node):
+        """
+        Process the arguments of the given root node and update the related nodes.
+
+        This method iterates through the `node_list` of the root node, and if any
+        node's relation matches the pattern defined in `Glossary.AMR_ARG`, it assigns
+        the root's verb to the node.
+
+        :param root: The root node whose arguments are to be processed.
+        :type root: Node
+        :return: None
+        """
         if not isinstance(root, Node):
             return root
         for node in root.node_list:
@@ -1176,6 +1578,19 @@ class Parser:
                 node.verb = root.verb
 
     def other_instance_elaboration(self, root: Node) -> Node:
+        """
+        Elaborate on instances other than verbs related to the given root node.
+
+        This method retrieves the instance associated with the root node and, based
+        on its properties, generates a new variable for the instance, updates its
+        relation, and assigns specific values to the instance based on predefined
+        glossaries. It also modifies nodes that are equal to the root node.
+
+        :param root: The root node to be processed.
+        :type root: Node
+        :return: The modified root node.
+        :rtype: Node
+        """
         if not isinstance(root, Node):
             return root
         instance = root.get_instance()
@@ -1212,6 +1627,19 @@ class Parser:
         return root
 
     def root_elaboration(self, root: Node) -> Node:
+        """
+        Elaborate on the given root node by processing its instance and its children.
+
+        This method performs various transformations on the root node and its associated instance.
+        It checks for specific conditions in the node and its children, modifying relationships,
+        variables, and adding new nodes based on predefined glossaries and logical rules. The method
+        also handles special cases like conjunctions, disjunctions, concessions, and conditions.
+
+        :param root: The root node to be processed and elaborated.
+        :type root: Node
+        :return: The modified root node after elaboration.
+        :rtype: Node
+        """
         instance = self.get_instance_alt(root.get_node_id())
         root_instance = root.get_instance()
 
@@ -1348,6 +1776,18 @@ class Parser:
         return root
 
     def date_entity(self, root: Node) -> Node:
+        """
+        Elaborate on the date-related entities within the given root node.
+
+        This method processes the root node, checking if it represents a date entity. If the root node
+        is identified as a date entity, it then processes each of its child nodes related to date components
+        (e.g., era, decade, century, calendar, weekday, etc.) by invoking the `date_child_elaboration` method.
+
+        :param root: The root node to be processed and elaborated.
+        :type root: Node
+        :return: The modified root node after date entity elaboration.
+        :rtype: Node
+        """
         if not isinstance(root, Node):
             return root
         instance = root.get_instance()
@@ -1369,12 +1809,34 @@ class Parser:
         return root
 
     def date_child_elaboration(self, child: Node):
+        """
+        Elaborate on a child node related to a date entity.
+
+        This method modifies the given child node by updating its relation to reflect the AMRB prefix
+        and applying any necessary transformations using `other_instance_elaboration_prefix`. The status
+        of the child node is set to `NodeStatus.OK`.
+
+        :param child: The child node to be processed.
+        :type child: Node
+        """
         if child is not None:
             child.relation = Glossary.AMRB + child.relation[1:]
             child = self.other_instance_elaboration_prefix(child, Glossary.AMRB)
             child.status = Glossary.NodeStatus.OK
 
     def prep_control(self, root: Node) -> Node:
+        """
+        Process a root node representing a preposition, adding a quality node and adjusting relations.
+
+        This method checks if the root node represents a valid preposition and, if so, processes the
+        node by creating a quality node, adjusting the relations of its child nodes, and handling any
+        manner-related transformations. It updates the root node's relation and its node list accordingly.
+
+        :param root: The root node to be processed.
+        :type root: Node
+        :return: The modified root node after preposition control elaboration.
+        :rtype: Node
+        """
         if len(root.node_list) == 0 or root.get_instance() is None or len(root.get_ops()) == 0:
             return root
         var = root.get_instance().var.replace(Glossary.FRED, "")
@@ -1408,6 +1870,17 @@ class Parser:
 
     @staticmethod
     def check_for_amr_instances(root: Node) -> bool:
+        """
+        Check if a root node has an AMR instance and a valid prefix.
+
+        This method checks whether the root node has an instance from the list of defined AMR instances
+        and if the node has a prefix. It returns `True` if both conditions are satisfied, otherwise returns `False`.
+
+        :param root: The root node to be checked.
+        :type root: Node
+        :return: `True` if the node has a valid AMR instance with a prefix, `False` otherwise.
+        :rtype: bool
+        """
         if not isinstance(root, Node):
             return False
         instance = root.get_instance()
@@ -1420,12 +1893,37 @@ class Parser:
 
     @staticmethod
     def manner_adverb(var: str) -> str:
+        """
+        Find a matching manner adverb for a given variable.
+
+        This method searches through a list of defined manner adverbs and returns the first one that matches
+        the given variable using regular expression matching. If no match is found, an empty string is returned.
+
+        :param var: The variable to be checked for a matching manner adverb.
+        :type var: str
+        :return: The first matching manner adverb or an empty string if no match is found.
+        :rtype: str
+        """
         for adv in Glossary.MANNER_ADVERBS:
             if re.match("^" + var + ".*", adv):
                 return adv
         return ""
 
     def other_instance_elaboration_prefix(self, root: Node, prefix: str) -> Node:
+        """
+        Elaborate on an instance by adding a prefix and handling special instances.
+
+        This method updates the variable and relation of a node's instance based on a given prefix. It also
+        handles special instances and modifies the relation to `RDF_TYPE` where applicable. The method ensures that
+        the instance is updated with a unique variable and correct status.
+
+        :param root: The root node to be processed.
+        :type root: Node
+        :param prefix: The prefix to be added to the instance's variable.
+        :type prefix: str
+        :return: The modified root node after elaboration.
+        :rtype: Node
+        """
         if not isinstance(root, Node):
             return root
         instance = root.get_instance()
@@ -1452,6 +1950,17 @@ class Parser:
         return root
 
     def get_original(self, root: Node) -> Node | None:
+        """
+        Retrieve the original node matching the root node.
+
+        This method searches for a node that matches the root node in terms of equality and ensures the node
+        has a non-`None` instance. It returns the first matching node or `None` if no match is found.
+
+        :param root: The root node to be checked for equality.
+        :type root: Node
+        :return: The original node matching the root node, or `None` if no match is found.
+        :rtype: Node | None
+        """
         if not isinstance(root, Node):
             return root
         for node in self.nodes:
@@ -1461,6 +1970,17 @@ class Parser:
 
     @staticmethod
     def ordinal(num: int) -> str:
+        """
+        Convert a number to its ordinal representation.
+
+        This method converts a given integer into its corresponding ordinal form (e.g., 1 → "1st", 2 → "2nd",
+        3 → "3rd", etc.). It handles exceptions for numbers 11, 12, and 13, which always have the "th" suffix.
+
+        :param num: The integer to be converted into an ordinal.
+        :type num: int
+        :return: The ordinal representation of the given number.
+        :rtype: str
+        """
         suffixes = ["th", "st", "nd", "rd", "th", "th", "th", "th", "th", "th"]
         if num == 11 or num == 12 or num == 13:
             return str(num) + "th"
@@ -1469,6 +1989,18 @@ class Parser:
 
     @staticmethod
     def disambiguation(var: str) -> str:
+        """
+        Disambiguate a variable based on a predefined list of terms.
+
+        This method checks if the given variable exists in the predefined list of DULs (`Glossary.DULS_CHECK`).
+        If found, it returns the corresponding value from `Glossary.DULS`. Otherwise, it returns the variable
+        prefixed with `Glossary.FRED`.
+
+        :param var: The variable to be disambiguated.
+        :type var: str
+        :return: The disambiguated value or the original variable prefixed with `Glossary.FRED`.
+        :rtype: str
+        """
         for i, dul in enumerate(Glossary.DULS_CHECK):
             if dul == var.lower():
                 return Glossary.DULS[i]

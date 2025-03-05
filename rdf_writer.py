@@ -8,6 +8,11 @@ from node import Node
 
 
 class RdfWriter:
+    """
+    A class for converting a hierarchical structure of nodes into an RDF graph using `rdflib`.
+
+    This class manages RDF graph construction, namespace binding, serialization, and visibility handling.
+    """
     def __init__(self):
         self.queue = []
         self.graph: Graph | None = None
@@ -19,20 +24,34 @@ class RdfWriter:
             self.namespace_manager.bind(Glossary.PREFIX[i][:-1], name_space)
 
     def new_graph(self):
+        """
+        Creates a new RDF graph and a secondary graph for non-visible triples.
+        Also, assigns the namespace manager to both graphs.
+        """
         self.graph = Graph()
-        # for i, name_space in enumerate(Glossary.NAMESPACE):
-        #     self.graph.bind(Glossary.PREFIX[i][:-1], name_space)
         self.not_visible_graph = Graph()
         self.graph.namespace_manager = self.namespace_manager
         self.not_visible_graph.namespace_manager = self.namespace_manager
 
-    def get_prefixes(self):
+    def get_prefixes(self) -> list[str]:
+        """
+        Retrieves the list of namespace prefixes bound to the RDF graph.
+
+        :return: A list of tuples containing (prefix, namespace URI).
+        :rtype: list[str]
+        """
         names = []
         for prefix, namespace in self.graph.namespaces():
             names.append([prefix, namespace])
         return names
 
     def to_rdf(self, root: Node):
+        """
+        Converts a hierarchical structure of `Node` objects into an RDF graph.
+
+        :param root: The root node of the structure to be transformed into RDF.
+        :type root: Node
+        """
         self.new_graph()
         if not isinstance(root, Node):
             return
@@ -67,11 +86,27 @@ class RdfWriter:
                         self.not_visible_graph.add((s, p, o))
 
     def serialize(self, rdf_format: Glossary.RdflibMode) -> str:
+        """
+        Serializes the RDF graph into the specified format.
+
+        :param rdf_format: The format in which to serialize the RDF graph.
+        :type rdf_format: Glossary.RdflibMode
+        :return: The serialized RDF data as a string.
+        :rtype: str
+        """
         if rdf_format.value in Glossary.RDF_MODE:
             return self.graph.serialize(format=rdf_format.value)
 
     @staticmethod
     def get_uri(var: str) -> str:
+        """
+        Resolves a variable name into a full URI based on predefined namespaces.
+
+        :param var: The variable name to be converted into a URI.
+        :type var: str
+        :return: The corresponding URI.
+        :rtype: str
+        """
         if Glossary.NON_LITERAL not in var:
             return Glossary.FRED_NS + var
         pref = var.split(Glossary.NON_LITERAL)[0] + Glossary.NON_LITERAL

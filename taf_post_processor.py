@@ -21,9 +21,16 @@ logger.setLevel(logging.INFO)
 
 
 class TafPostProcessor:
+    """
+    A class for post-processing RDF graphs by performing entity disambiguation using Word Sense Disambiguation (WSD)
+    and linking entities to external knowledge bases.
+    """
     current_directory = os.path.dirname(__file__)
 
     def __init__(self):
+        """
+        Initializes the TafPostProcessor with SPARQL endpoints, namespace bindings, and WordNet POS mappings.
+        """
         self.dir_path = TafPostProcessor.current_directory
         self.framester_sparql = 'http://etna.istc.cnr.it/framester2/sparql'
         self.ewiser_wsd_url = 'https://arco.istc.cnr.it/ewiser/wsd'
@@ -77,6 +84,19 @@ class TafPostProcessor:
         }
 
     def disambiguate(self, text: str, rdf_graph: Graph, namespace: str | None = Glossary.FRED_NS) -> Graph:
+        """
+        Disambiguates entities in an RDF graph using Word Sense Disambiguation (WSD) and links them to WordNet synsets.
+
+        :param text: The input text associated with the RDF graph.
+        :type text: str
+        :param rdf_graph: The RDF graph to be processed.
+        :type rdf_graph: Graph
+        :param namespace: The namespace prefix (optional) for entities to be disambiguated.
+        :type namespace: str
+
+        :rtype: Graph
+        :return: The updated RDF graph with disambiguated entities linked to WordNet.
+        """
         if isinstance(rdf_graph, Graph):
             graph = rdf_graph
             graph.namespace_manager = self.namespace_manager
@@ -252,6 +272,24 @@ class TafPostProcessor:
         return result
 
     def disambiguate_usea(self, text: str, rdf_graph: Graph, namespace: str | None = Glossary.FRED_NS) -> Graph:
+        """
+        Disambiguates entities in a multilingual RDF graph using Word Sense Disambiguation (WSD)
+        with the Usea algorithm and aligns them with WordNet synsets.
+
+        This method processes an RDF graph by identifying entities requiring disambiguation,
+        performing WSD on the input text, and linking the identified entities to appropriate
+        WordNet synsets (either WN30 or WN31). If no disambiguation is found, the original
+        graph is returned unchanged.
+
+        :param text: The textual content from which entities are disambiguated.
+        :type text: str
+        :param rdf_graph: The RDF graph containing entities to be disambiguated.
+        :type rdf_graph: Graph
+        :param namespace: The namespace prefix (optional) for filtering entities. Defaults to `Glossary.FRED_NS`.
+
+        :rtype: Graph
+        :return: The updated RDF graph with entities linked to WordNet synsets when possible.
+        """
         if isinstance(rdf_graph, Graph):
             graph = rdf_graph
             graph.namespace_manager = self.namespace_manager
@@ -430,6 +468,19 @@ class TafPostProcessor:
         return rdf_graph
 
     def wsd_usea(self, text: str):
+        """
+        Performs Word Sense Disambiguation (WSD) using the Usea services.
+
+        This method preprocesses the input text and applies WSD via external Usea services.
+        It first sends the text to a preprocessing endpoint and then performs WSD on the
+        processed output, returning disambiguated tokens.
+
+        :param text: The input text to be disambiguated.
+        :type text: str
+        :return: A list of disambiguated tokens with their associated sense information.
+        :rtype: list
+        """
+
         # preprocess
         text_input = {
             "type": "text",
@@ -447,6 +498,18 @@ class TafPostProcessor:
         return result["tokens"]
 
     def link_to_wikidata(self, rdf_graph: Graph) -> Graph:
+        """
+        Links entities in the RDF graph to Wikidata using Wikipedia mappings.
+
+        This method identifies entities in the RDF graph that are aligned with DBpedia and
+        attempts to link them to their corresponding Wikidata entities. It ensures that the
+        required database for mapping is available, downloading and extracting it if necessary.
+
+        :param rdf_graph: The input RDF graph containing entities to be linked.
+        :type rdf_graph: Graph
+        :return: The RDF graph with additional owl:sameAs links to Wikidata entities.
+        :rtype: Graph
+        """
         db_file_name = os.path.join(self.dir_path, "index_enwiki-latest.db")
         zip_db_file_name = os.path.join(self.dir_path, "index_enwiki-latest.zip")
         if not os.path.isfile(db_file_name) and not os.path.isfile(zip_db_file_name):
