@@ -42,3 +42,5 @@ import sys
 
 # Add the directory containing your Python modules to the sys.path
 sys.path.insert(0, os.path.abspath('../../'))
+
+print(sys.path)
