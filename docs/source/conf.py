@@ -36,3 +36,9 @@ html_theme = 'sphinx_rtd_theme'
 
 # -- Options for EPUB output
 epub_show_urls = 'footnote'
+
+import os
+import sys
+
+# Add the directory containing your Python modules to the sys.path
+sys.path.insert(0, os.path.abspath('../../'))
