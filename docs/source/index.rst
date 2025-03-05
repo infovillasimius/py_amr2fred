@@ -20,3 +20,5 @@ py-amr2fred documentation
 
 .. genindex::
 
+
+See the :ref:`genindex` for a complete list of terms.
