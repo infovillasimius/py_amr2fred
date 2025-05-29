@@ -9,7 +9,7 @@
 project = 'py-amr2fred'
 copyright = '2025, Antonello Meloni, Alessandro Russo'
 author = 'Antonello Meloni, Alessandro Russo'
-release = '0.2.4'
+release = '0.5.0'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

@@ -2,10 +2,10 @@ import re
 
 from unidecode import unidecode
 
-from couple import Couple
-from glossary import *
-from node import Node
-from propbank import Propbank
+from .couple import Couple
+from .glossary import *
+from .node import Node
+from .propbank import Propbank
 
 
 class Parser:

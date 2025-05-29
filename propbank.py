@@ -1,8 +1,8 @@
 import csv
 import os
 
-from glossary import Glossary
-from node import Node
+from .glossary import Glossary
+from .node import Node
 
 
 class Propbank:

@@ -10,7 +10,7 @@ from rdflib import Graph, URIRef, Literal
 from rdflib.namespace import OWL, NamespaceManager, Namespace
 from wikimapper import WikiMapper
 
-from glossary import Glossary
+from .glossary import Glossary
 
 nltk.download('wordnet')
 from nltk.corpus import wordnet

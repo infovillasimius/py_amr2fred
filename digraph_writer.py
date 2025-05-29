@@ -6,8 +6,8 @@ from typing import IO
 
 from rdflib import Graph, URIRef
 
-from glossary import Glossary
-from node import Node
+from .glossary import Glossary
+from .node import Node
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)

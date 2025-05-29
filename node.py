@@ -1,6 +1,6 @@
 import re
 
-from glossary import Glossary
+from .glossary import Glossary
 
 
 class Node:

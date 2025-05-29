@@ -6,11 +6,11 @@ from typing import IO
 import requests
 from rdflib import Graph
 
-from digraph_writer import DigraphWriter
-from glossary import Glossary
-from parser import Parser
-from rdf_writer import RdfWriter
-from taf_post_processor import TafPostProcessor
+from .digraph_writer import DigraphWriter
+from .glossary import Glossary
+from .parser import Parser
+from .rdf_writer import RdfWriter
+from .taf_post_processor import TafPostProcessor
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -109,10 +109,9 @@ class Amr2fred:
                 else:
                     return DigraphWriter.to_svg_string(root)
 
-    def get_amr(self, text: str, alt_api: bool, multilingual: bool) -> str:
+    def get_amr(self, text: str, alt_api: bool, multilingual: bool) -> str | None:
         """
             Retrieves the AMR representation of the given text using the appropriate API.
-
             :param text: Input text to convert into AMR.
             :param alt_api: Whether to use the predefined alternative API or a custom one provided during class instantiation.
             :param multilingual: Whether to use the multilingual text-to-AMR service.
@@ -136,3 +135,4 @@ class Amr2fred:
             return amr
         except Exception as e:
             logger.warning(str(e))
+            return None

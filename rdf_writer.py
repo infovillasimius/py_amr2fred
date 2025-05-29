@@ -3,8 +3,8 @@ import re
 from rdflib import Graph, URIRef, Literal
 from rdflib.namespace import NamespaceManager
 
-from glossary import Glossary
-from node import Node
+from .glossary import Glossary
+from .node import Node
 
 
 class RdfWriter:
