@@ -1,7 +1,7 @@
 digraph\_writer module
 ======================
 
-.. automodule:: digraph_writer
+.. automodule:: py_amr2fred.digraph_writer
    :members:
    :show-inheritance:
 

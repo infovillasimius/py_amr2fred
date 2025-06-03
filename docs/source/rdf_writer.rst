@@ -1,7 +1,7 @@
 rdf\_writer module
 ==================
 
-.. automodule:: rdf_writer
+.. automodule:: py_amr2fred.rdf_writer
    :members:
    :show-inheritance:
 

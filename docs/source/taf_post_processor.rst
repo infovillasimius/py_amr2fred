@@ -1,6 +1,6 @@
 taf\_post\_processor module
 ===========================
 
-.. automodule:: taf_post_processor
+.. automodule:: py_amr2fred.taf_post_processor
    :members:
    :show-inheritance:

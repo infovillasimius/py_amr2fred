@@ -1,7 +1,7 @@
 glossary module
 ===============
 
-.. automodule:: glossary
+.. automodule:: py_amr2fred.glossary
    :members:
    :show-inheritance:
 
