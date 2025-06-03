@@ -1,7 +1,7 @@
 amr2fred module
 ===============
 
-.. automodule:: .amr2fred
+.. automodule:: py_amr2fred.amr2fred
    :members:
    :show-inheritance:
    :undoc-members:
