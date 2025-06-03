@@ -2,9 +2,9 @@ import os
 import unittest
 from unittest.mock import patch
 
-from digraph_writer import DigraphWriter
-from glossary import Glossary
-from node import Node
+from py_amr2fred.digraph_writer import DigraphWriter
+from py_amr2fred.glossary import Glossary
+from py_amr2fred.node import Node
 
 
 class TestDigraphWriter(unittest.TestCase):

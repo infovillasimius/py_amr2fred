@@ -3,8 +3,8 @@ from unittest.mock import patch
 
 from rdflib import Graph
 
-from amr2fred import Amr2fred
-from glossary import Glossary
+from py_amr2fred.amr2fred import Amr2fred
+from py_amr2fred.glossary import Glossary
 
 
 class TestAmr2fred(unittest.TestCase):

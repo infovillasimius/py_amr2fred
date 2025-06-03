@@ -1,9 +1,9 @@
 import unittest
 from unittest.mock import patch, mock_open
 
-from glossary import Glossary
-from node import Node
-from propbank import Propbank
+from py_amr2fred.glossary import Glossary
+from py_amr2fred.node import Node
+from py_amr2fred.propbank import Propbank
 
 
 class TestPropbank(unittest.TestCase):

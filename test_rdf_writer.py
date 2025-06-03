@@ -2,9 +2,9 @@ import unittest
 
 from rdflib import Graph, URIRef, Literal
 
-from glossary import Glossary
-from node import Node
-from rdf_writer import RdfWriter
+from py_amr2fred.glossary import Glossary
+from py_amr2fred.node import Node
+from py_amr2fred.rdf_writer import RdfWriter
 
 
 class TestRdfWriter(unittest.TestCase):

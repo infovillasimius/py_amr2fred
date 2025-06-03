@@ -1,6 +1,6 @@
 import unittest
 
-from couple import Couple
+from py_amr2fred.couple import Couple
 
 
 class TestCouple(unittest.TestCase):
