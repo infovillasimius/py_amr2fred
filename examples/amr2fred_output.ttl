@@ -1,0 +1,72 @@
+@prefix ns1: <https://w3id.org/framester/schema/> .
+@prefix ns2: <http://www.ontologydesignpatterns.org/ont/vn/abox/role/vnrole.owl#> .
+@prefix ns3: <https://w3id.org/framester/wn/wn30/schema/> .
+@prefix ns4: <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#> .
+@prefix ns5: <https://w3id.org/framester/data/propbank-3.4.0/LocalRole/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ns4:hasQuality a owl:ObjectProperty .
+
+ns4:precedes a owl:ObjectProperty .
+
+<http://www.ontologydesignpatterns.org/ont/fred/domain.owl#brown_1> a <https://w3id.org/framester/data/propbank-3.4.0/RoleSet/brown-01> ;
+    ns4:precedes <http://www.ontologydesignpatterns.org/ont/fred/domain.owl#jump_1> ;
+    ns5:brown-01.browned-entity <http://www.ontologydesignpatterns.org/ont/fred/domain.owl#fox_1> .
+
+<http://www.ontologydesignpatterns.org/ont/fred/domain.owl#quick_1> a <https://w3id.org/framester/data/propbank-3.4.0/RoleSet/quick-02> ;
+    ns4:precedes <http://www.ontologydesignpatterns.org/ont/fred/domain.owl#jump_1> ;
+    ns5:quick-02.non-volitional-speedy-thing <http://www.ontologydesignpatterns.org/ont/fred/domain.owl#fox_1> .
+
+ns2:Location a owl:ObjectProperty .
+
+ns5:brown-01.browned-entity a owl:ObjectProperty .
+
+ns5:jump-03.agent-of-motion a owl:ObjectProperty .
+
+ns5:quick-02.non-volitional-speedy-thing a owl:ObjectProperty .
+
+ns1:subsumedUnder a owl:ObjectProperty .
+
+<http://www.ontologydesignpatterns.org/ont/fred/domain.owl#Dog> rdfs:subClassOf ns4:Organism,
+        <https://w3id.org/framester/wn/wn30/instances/supersense-noun_animal> ;
+    owl:equivalentClass <https://w3id.org/framester/wn/wn30/instances/synset-dog-noun-1> .
+
+<http://www.ontologydesignpatterns.org/ont/fred/domain.owl#Fox> rdfs:subClassOf ns4:Organism,
+        <https://w3id.org/framester/wn/wn30/instances/supersense-noun_animal> ;
+    owl:equivalentClass <https://w3id.org/framester/wn/wn30/instances/synset-fox-noun-1> .
+
+<http://www.ontologydesignpatterns.org/ont/fred/domain.owl#Lazy> rdfs:subClassOf ns4:Quality,
+        ns1:AdjectivalQuality,
+        <https://w3id.org/framester/wn/wn30/instances/supersense-adj_all> ;
+    owl:equivalentClass <https://w3id.org/framester/wn/wn30/instances/synset-lazy-adjectivesatellite-1> .
+
+<http://www.ontologydesignpatterns.org/ont/fred/domain.owl#dog_1> a <http://www.ontologydesignpatterns.org/ont/fred/domain.owl#Dog> ;
+    ns4:hasQuality <http://www.ontologydesignpatterns.org/ont/fred/domain.owl#Over>,
+        <http://www.ontologydesignpatterns.org/ont/fred/domain.owl#lazy_1> .
+
+<http://www.ontologydesignpatterns.org/ont/fred/domain.owl#lazy_1> a <http://www.ontologydesignpatterns.org/ont/fred/domain.owl#Lazy> .
+
+<https://w3id.org/framester/data/propbank-3.4.0/RoleSet/brown-01> rdfs:label "(cause to) be brown by cooking or tanning"^^xsd:string ;
+    rdfs:subClassOf ns4:Event .
+
+<https://w3id.org/framester/data/propbank-3.4.0/RoleSet/jump-03> rdfs:label "physically or metaphorically leap, physical motion"^^xsd:string ;
+    rdfs:subClassOf ns4:Event ;
+    ns1:subsumedUnder <http://verbatlas.org/0054f> .
+
+<https://w3id.org/framester/data/propbank-3.4.0/RoleSet/quick-02> rdfs:label "speedy, nimble"^^xsd:string ;
+    rdfs:subClassOf ns4:Event .
+
+<https://w3id.org/framester/wn/wn30/instances/synset-dog-noun-1> ns3:gloss "a member of the genus Canis (probably descended from the common wolf) that has been domesticated by man since prehistoric times; occurs in many breeds; \"the dog barked all night\""@en-us .
+
+<https://w3id.org/framester/wn/wn30/instances/synset-fox-noun-1> ns3:gloss "alert carnivorous mammal with pointed muzzle and ears and a bushy tail; most are predators that do not hunt in packs"@en-us .
+
+<https://w3id.org/framester/wn/wn30/instances/synset-lazy-adjectivesatellite-1> ns3:gloss "moving slowly and gently; \"up a lazy river\"; \"lazy white clouds\"; \"at a lazy pace\""@en-us .
+
+<http://www.ontologydesignpatterns.org/ont/fred/domain.owl#jump_1> a <https://w3id.org/framester/data/propbank-3.4.0/RoleSet/jump-03> ;
+    ns2:Location <http://www.ontologydesignpatterns.org/ont/fred/domain.owl#dog_1> ;
+    ns5:jump-03.agent-of-motion <http://www.ontologydesignpatterns.org/ont/fred/domain.owl#fox_1> .
+
+<http://www.ontologydesignpatterns.org/ont/fred/domain.owl#fox_1> a <http://www.ontologydesignpatterns.org/ont/fred/domain.owl#Fox> .
+

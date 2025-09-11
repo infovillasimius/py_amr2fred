@@ -57,7 +57,7 @@ class Amr2fred:
             :param graphic: If specified, returns a graphical representation ('png' or 'svg').
             :param post_processing: Whether to apply post-processing to enhance the RDF graph.
             :param alt_fred_ns: Alternative namespace for FRED RDF generation.
-            :return: Serialized RDF graph, RDFLib Graph object, or graphical representation.
+            :return: Serialized RDF graph, RDFLib Graph object, or graphical representation (DOT format).
         """
         if amr is None and text is None:
             return "Nothing to do!"
