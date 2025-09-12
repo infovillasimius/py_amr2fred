@@ -1,10 +1,3 @@
-"""
-Refactored Node Class
-
-This module provides the new Node class that combines NodeCore, NodeRelations,
-and NodeOperations for improved separation of concerns and maintainability.
-"""
-
 from typing import Optional, List, Dict, Any, Callable, Set
 from enum import Enum
 import copy
@@ -25,12 +18,9 @@ class CopyMode(Enum):
 
 class Node:
     """
-    Refactored Node class with separated concerns.
-    
-    This class combines three separate components:
+    This class combines two components:
     - NodeCore: Basic node data and identity
     - NodeRelations: Parent-child relationships 
-    - NodeOperations: Tree operations and traversal
     
     This separation provides better testability, clearer responsibilities,
     and easier maintenance while maintaining backward compatibility.

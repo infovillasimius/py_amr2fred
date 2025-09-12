@@ -23,7 +23,7 @@ The `py_amr2fred` package consists of several interconnected modules that work t
 - **`propbank.py`**: PropBank frame and role integration
 - **`digraph_writer.py`**: Graph visualization support
 - **`uri_builder.py`**: URI construction utilities
-- **`couple.py`**: Node relationship pairs
+- **`couple.py`**: Word occurrence tracking
 - **`singleton_mixin.py`**: Singleton pattern implementation
 - **`exception_handler.py`**: Error handling and recursion protection
 
@@ -83,9 +83,8 @@ classDiagram
         +List~Node~ nodes
         +List~Couple~ couples
         +parse(amr_string) Node
-        +preprocess(amr) str
-        +create_node_tree() Node
-        +handle_multi_sentence() void
+        +multi_sentence(root) Node
+        +get_parser()$ Parser
     }
 
     class RdfWriter {
@@ -94,7 +93,7 @@ classDiagram
         +NamespaceManager namespace_manager
         +to_rdf(root_node) void
         +serialize(mode) str
-        +add_triple(subject, predicate, object) void
+        +new_graph() void
     }
 
     class Glossary {
@@ -136,17 +135,32 @@ classDiagram
     }
 
     class Couple {
-        +Node first
-        +Node second
-        +str relation_type
-        +equals(other) bool
+        +int __occurrence
+        +str __word
+        +get_word() str
+        +get_occurrence() int
+        +set_occurrence(occurrence) void
+        +increment_occurrence() void
+        +__str__() str
     }
 
     class URIBuilder {
-        +build_uri(base, fragment) str
-        +build_fred_uri(fragment) str
-        +build_ontology_uri(concept) str
-        +normalize_fragment(text) str
+        +ConfigurationManager config
+        +build_namespace_uri(prefix, local_name) str
+        +resolve_prefixed_uri(prefixed_uri) str
+        +build_api_url(endpoint_type, variant, params) str
+        +sanitize_local_name(name) str
+        +build_instance_uri(prefix, instance_type, identifier) str
+        +build_property_uri(prefix, property_name) str
+    }
+
+    class GraphFactory {
+        +ConfigurationManager config
+        +URIBuilder uri_builder
+        +create_graph(bind_namespaces, custom_namespaces) rdflib.Graph
+        +create_graph_pair(bind_namespaces) tuple
+        +clone_graph_structure(source_graph) rdflib.Graph
+        +_bind_default_namespaces(graph) void
     }
 
     class SingletonMixin {
@@ -154,7 +168,95 @@ classDiagram
         +_instances Dict
     }
 
-    %% Enums
+    class RecursionGuard {
+        +str context_name
+        +int max_depth
+        +int depth
+        +Dict _counters
+        +__enter__() Self
+        +__exit__(exc_type, exc_val, exc_tb) None
+    }
+
+    class NamespaceManager {
+        +ConfigurationManager _config_manager
+        +Dict _namespaces_config
+        +Dict _ontology_config
+        +get_namespace(prefix) str
+        +get_all_prefixes() Dict
+        +get_prefix_list() List~str~
+        +get_namespace_list() List~str~
+        +resolve_prefixed_name(prefixed_name) str
+        +set_namespace(prefix, namespace_uri) void
+    }
+
+    class AMRPatternMatcher {
+        +ConfigurationManager _config_manager
+        +Dict _patterns_config
+        +get_pattern(pattern_name) str
+        +get_relation(category, relation_name) str
+        +get_special_verb(verb_name) str
+        +get_fred_mapping(amr_relation) str
+        +get_constant(constant_name) Any
+    }
+
+    class LinguisticDataProvider {
+        +ConfigurationManager _config_manager
+        +Dict _linguistic_config
+        +List _adjectives
+        +get_pronouns(category) List~str~
+        +get_conjunctions() List~str~
+        +get_prepositions() List~str~
+        +get_manner_adverbs() List~str~
+        +get_adjectives() List~str~
+    }
+
+    class EntityClassifier {
+        +ConfigurationManager _config_manager
+        +Dict _entities_config
+        +get_entity_types(category) List~str~
+        +get_special_entities() List~str~
+        +get_quantity_types() List~str~
+        +get_date_component(component) str
+        +is_named_entity(entity) bool
+    }
+
+    class ValidationService {
+        +ConfigurationManager _config_manager
+        +Dict _validation_config
+        +get_data_type_info(data_type) Dict
+        +get_serialization_formats() List~str~
+        +validate_pattern(value, data_type) bool
+    }
+
+    class APIEndpointManager {
+        +ConfigurationManager _config_manager
+        +Dict _api_config
+        +get_text2amr_endpoint(variant) str
+        +get_multilingual_amr_endpoint(variant) str
+        +get_request_config() Dict
+    }
+
+    class DataSourceManager {
+        +ConfigurationManager _config_manager
+        +Dict _data_config
+        +get_propbank_config() Dict
+        +get_data_path(path_type) str
+        +resolve_data_file_path(relative_path) Path
+    }
+
+    class GlossaryMeta {
+        <<metaclass>>
+        +__getattribute__(name) Any
+    }
+
+    class classproperty {
+        <<descriptor>>
+        +func Function
+        +__init__(func) void
+        +__get__(obj, cls) Any
+    }
+
+    %% Enums - Note: duplicated in both config_manager.py and glossary.py
     class RdflibMode {
         <<enumeration>>
         TURTLE
@@ -166,18 +268,20 @@ classDiagram
 
     class NodeStatus {
         <<enumeration>>
+        OK
         AMR
-        FRED
+        ERROR
         REMOVE
-        TO_REMOVE
     }
 
     class NodeType {
         <<enumeration>>
-        CONCEPT
-        ENTITY
-        LITERAL
+        NOUN
+        VERB
         OTHER
+        AMR2FRED
+        FRED
+        COMMON
     }
 
     class CopyMode {
@@ -187,6 +291,37 @@ classDiagram
         STRUCTURE_ONLY
         CHILDREN_ONLY
     }
+
+    class PropbankFrameFields {
+        <<enumeration>>
+        PB_Frame
+        PB_FrameLabel
+        PB_Role
+        FN_Frame
+        VA_Frame
+    }
+
+    class PropbankRoleFields {
+        <<enumeration>>
+        PB_Frame
+        PB_Role
+        PB_RoleLabel
+        PB_GenericRole
+        PB_Tr
+        PB_ARG
+        VA_Role
+    }
+
+    %% Enums defined in exception_handler.py
+    class LogLevel {
+        <<enumeration>>
+        DEBUG
+        INFO
+        WARNING
+        ERROR
+        CRITICAL
+    }
+
 
     %% Relationships
     Amr2fred --> Parser : uses
@@ -202,22 +337,70 @@ classDiagram
     Parser --> Couple : creates
     Parser --> Glossary : uses
     Parser --> SingletonMixin : inherits
+    Parser --> RecursionGuard : uses
 
     RdfWriter --> Node : processes
     RdfWriter --> Glossary : uses
     RdfWriter --> URIBuilder : uses
+    RdfWriter --> GraphFactory : uses
 
     TafPostProcessor --> Propbank : uses
+    TafPostProcessor --> RecursionGuard : uses
 
-    ConfigurationManager --> Glossary : configures
+    DigraphWriter --> RecursionGuard : uses
 
+    %% Exception Handler Relationships
+    RecursionGuard --> LogLevel : uses
+
+    %% Configuration Management Relationships
+    ConfigurationManager --> NamespaceManager : creates
+    ConfigurationManager --> AMRPatternMatcher : creates
+    ConfigurationManager --> LinguisticDataProvider : creates
+    ConfigurationManager --> EntityClassifier : creates
+    ConfigurationManager --> ValidationService : creates
+    ConfigurationManager --> APIEndpointManager : creates
+    ConfigurationManager --> DataSourceManager : creates
+
+    NamespaceManager --> ConfigurationManager : uses
+    AMRPatternMatcher --> ConfigurationManager : uses
+    LinguisticDataProvider --> ConfigurationManager : uses
+    EntityClassifier --> ConfigurationManager : uses
+    ValidationService --> ConfigurationManager : uses
+    APIEndpointManager --> ConfigurationManager : uses
+    DataSourceManager --> ConfigurationManager : uses
+
+    Glossary --> ConfigurationManager : uses
+    Glossary --> GlossaryMeta : uses as metaclass
+    Glossary --> classproperty : uses
+
+    %% URI Building and Graph Factory Relationships
+    URIBuilder --> ConfigurationManager : uses
+    GraphFactory --> ConfigurationManager : uses
+    GraphFactory --> URIBuilder : uses
+
+    %% Enum Definitions (defined in both config_manager.py and glossary.py)
+    ConfigurationManager --> RdflibMode : defines
+    ConfigurationManager --> NodeStatus : defines
+    ConfigurationManager --> NodeType : defines
+    ConfigurationManager --> PropbankFrameFields : defines
+    ConfigurationManager --> PropbankRoleFields : defines
+    
     Glossary --> RdflibMode : defines
     Glossary --> NodeStatus : defines
     Glossary --> NodeType : defines
+    Glossary --> PropbankFrameFields : defines
+    Glossary --> PropbankRoleFields : defines
 
     Node --> CopyMode : uses
+    Node --> RecursionGuard : uses
+    Node --> NodeCore : contains
+    Node --> NodeRelations : contains
 
     Propbank --> SingletonMixin : inherits
+    
+    %% Additional relationships for missing classes
+    GraphFactory --> NamespaceManager : uses
+    URIBuilder --> NamespaceManager : uses
 ```
 
 ## Module Details
@@ -407,12 +590,3 @@ The package includes comprehensive error handling:
 - **Caching**: Frequently used patterns and configurations cached
 - **Memory Optimization**: Efficient node storage and relationship management
 - **Batch Processing**: Support for processing multiple AMR graphs
-
-## Testing
-
-The package includes comprehensive test coverage:
-
-- Unit tests for individual components
-- Integration tests for end-to-end workflows
-- Performance tests for large-scale processing
-- Mock external API dependencies
