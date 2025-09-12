@@ -1,66 +1,207 @@
-import unittest
+"""Tests for the refactored Node components."""
 
+import unittest
+from py_amr2fred.node import Node, CopyMode
+from py_amr2fred.config_manager import NodeStatus, NodeType
 from py_amr2fred.glossary import Glossary
-from py_amr2fred.node_refactored import Node
 
 
 class TestNode(unittest.TestCase):
 
     def setUp(self):
-        """Create sample nodes for testing."""
-        self.node1 = Node(var="n1", relation="subj")
-        self.node2 = Node(var="n2", relation="obj")
-        self.node3 = Node(var="n3", relation=Glossary.INSTANCE)
+        """Set up test nodes."""
+        # Use automatic relationship linking for these tests
+        self.root = Node("root", "top", auto_link_relationships=True)
+        self.child1 = Node("child1", ":arg0", auto_link_relationships=True)
+        self.child2 = Node("child2", ":arg1", auto_link_relationships=True)
+        self.grandchild = Node("grandchild", ":mod", auto_link_relationships=True)
 
-    def test_initialization(self):
-        """Test Node initialization."""
-        self.assertEqual(self.node1.var, "n1")
-        self.assertEqual(self.node1.relation, "subj")
-        self.assertEqual(self.node1.status, Glossary.NodeStatus.AMR)
-        self.assertTrue(self.node1.visibility)
+    def test_node_initialization(self):
+        """Test basic node initialization."""
+        node = Node("test", ":relation")
+        self.assertEqual(node.var, "test")
+        self.assertEqual(node.relation, ":relation")
+        self.assertEqual(node.status, Glossary.NodeStatus.AMR)
+        self.assertTrue(node.visibility)
+
+    def test_core_properties(self):
+        """Test core property access."""
+        node = Node("test", ":relation")
+        
+        # Test getters
+        self.assertEqual(node.get_var(), "test")
+        self.assertEqual(node.get_relation(), ":relation")
+        self.assertEqual(node.get_status(), Glossary.NodeStatus.AMR)
+        
+        # Test setters
+        node.set_var("new_var")
+        node.set_relation(":new_relation")
+        node.set_status(Glossary.NodeStatus.OK)
+        
+        self.assertEqual(node.var, "new_var")
+        self.assertEqual(node.relation, ":new_relation")
+        self.assertEqual(node.status, Glossary.NodeStatus.OK)
+
+    def test_relationship_management(self):
+        """Test parent-child relationships."""
+        # Add children
+        self.root.relations.add_child(self.child1)
+        self.root.relations.add_child(self.child2)
+        
+        # Test children access
+        children = self.root.relations.get_children()
+        self.assertEqual(len(children), 2)
+        self.assertIn(self.child1, children)
+        self.assertIn(self.child2, children)
+        
+        # Test parent access
+        self.assertEqual(self.child1.relations.get_parent(), self.root)
+        
+        # Test backward compatibility
+        self.assertEqual(len(self.root.node_list), 2)
+        self.assertEqual(self.child1.parent, self.root)
+
+    def test_tree_structure_queries(self):
+        """Test tree structure queries."""
+        # Build hierarchy
+        self.root.relations.add_child(self.child1)
+        self.child1.relations.add_child(self.grandchild)
+        
+        # Test structure queries
+        self.assertTrue(self.root.is_root())
+        self.assertFalse(self.child1.is_root())
+        self.assertTrue(self.grandchild.is_leaf())
+        self.assertFalse(self.child1.is_leaf())
+        
+        # Test depth
+        self.assertEqual(self.root.get_depth(), 0)
+        self.assertEqual(self.child1.get_depth(), 1)
+        self.assertEqual(self.grandchild.get_depth(), 2)
+
+    def test_node_copying(self):
+        """Test different copy modes."""
+        self.root.relations.add_child(self.child1)
+        self.child1.relations.add_child(self.grandchild)
+        
+        # Test shallow copy
+        shallow_copy = self.root.copy(CopyMode.SHALLOW)
+        self.assertEqual(shallow_copy.var, self.root.var)
+        self.assertEqual(len(shallow_copy.node_list), 0)  # No children
+        
+        # Test deep copy
+        deep_copy = self.root.copy(CopyMode.DEEP)
+        self.assertEqual(deep_copy.var, self.root.var)
+        self.assertEqual(len(deep_copy.node_list), 1)  # Has children
+        
+        # Test backward compatibility
+        legacy_copy = self.root.get_copy()
+        self.assertEqual(legacy_copy.var, self.root.var)
+
+    def test_search_operations(self):
+        """Test search functionality."""
+        self.root.relations.add_child(self.child1)
+        self.root.relations.add_child(self.child2)
+        self.child1.relations.add_child(self.grandchild)
+        
+        # Test find by variable
+        found = self.root.find_by_var("child1")
+        self.assertEqual(found, self.child1)
+        
+        # Test find by relation
+        arg_nodes = self.root.find_by_relation(":arg0")
+        self.assertIn(self.child1, arg_nodes)
+        
+        # Test find by status
+        self.child2.set_status(NodeStatus.OK)
+        ok_nodes = self.root.find_by_status(NodeStatus.OK)
+        self.assertIn(self.child2, ok_nodes)
+
+    def test_tree_statistics(self):
+        """Test tree size and depth calculations."""
+        self.root.relations.add_child(self.child1)
+        self.root.relations.add_child(self.child2)
+        self.child1.relations.add_child(self.grandchild)
+        
+        # Test tree size
+        size = self.root.get_tree_size()
+        self.assertEqual(size, 4)  # root + 2 children + 1 grandchild
+        
+        # Test max depth
+        max_depth = self.root.get_max_depth()
+        self.assertEqual(max_depth, 2)  # root -> child -> grandchild
+
+    def test_node_equality(self):
+        """Test node equality and hashing."""
+        node1 = Node("test", ":relation")
+        node2 = Node("test", ":relation")
+        
+        # Nodes with same content but different IDs should not be equal
+        self.assertNotEqual(node1, node2)
+        self.assertNotEqual(hash(node1), hash(node2))
+        
+        # Node should equal itself
+        self.assertEqual(node1, node1)
+        self.assertEqual(hash(node1), hash(node1))
+
+    def test_dictionary_conversion(self):
+        """Test conversion to dictionary representation."""
+        self.root.relations.add_child(self.child1)
+        
+        node_dict = self.root.to_dict()
+        
+        self.assertEqual(node_dict['var'], 'root')
+        self.assertEqual(node_dict['relation'], 'top')
+        self.assertTrue(node_dict['has_parent'] == False)  # Root has no parent
+        self.assertEqual(node_dict['child_count'], 1)
+        self.assertIn('children', node_dict)
 
     def test_string_representation(self):
-        """Test __str__ method."""
-        self.assertIsInstance(str(self.node1), str)
+        """Test string representation."""
+        self.root.relations.add_child(self.child1)
+        
+        str_repr = str(self.root)
+        self.assertIn("root", str_repr)
+        self.assertIn("child1", str_repr)
+        
+        # Test circular reference detection
+        # Create circular reference
+        self.child1.relations.add_child(self.root)  # This creates a cycle
+        
+        # Should not cause infinite recursion
+        str_repr = str(self.root)
+        self.assertIsInstance(str_repr, str)  # Should complete without error
 
-    def test_equality(self):
-        """Test __eq__ method."""
-        node1_copy = Node(var="n1", relation="subj")
-        self.assertNotEqual(self.node1, node1_copy)  # Different instances should not be equal
-
-    def test_add_child(self):
-        """Test adding a child node."""
-        self.node1.add(self.node2)
-        self.assertIn(self.node2, self.node1.get_children("obj"))
-
-    def test_get_instance(self):
-        """Test retrieving an INSTANCE child."""
-        self.node1.add(self.node3)
-        instance_node = self.node1.get_instance()
-        self.assertEqual(instance_node, self.node3)
-
-    def test_get_child(self):
-        """Test retrieving a specific child node."""
-        self.node1.add(self.node2)
-        child = self.node1.get_child("obj")
-        self.assertEqual(child, self.node2)
-
-    def test_make_equals(self):
-        """Test setting the unique ID of a Node."""
-        self.node1.make_equals(node=self.node2)
-        self.assertEqual(self.node1.get_node_id(), self.node2.get_node_id())
-
-    def test_copy_node(self):
-        """Test creating a copy of a Node."""
-        node_copy = self.node1.get_copy()
-        self.assertNotEqual(id(self.node1), id(node_copy))  # Ensure different instances
-        self.assertEqual(self.node1.var, node_copy.var)
-
-    def test_set_status(self):
-        """Test changing the status of a Node."""
-        self.node1.set_status(Glossary.NodeStatus.OK)
-        self.assertEqual(self.node1.status, Glossary.NodeStatus.OK)
+    def test_backward_compatibility_methods(self):
+        """Test backward compatibility with original Node API."""
+        # Test basic add method (backward compatibility)
+        self.root.add(self.child1)
+        self.assertIn(self.child1, self.root.get_children(":arg0"))
+        
+        # Test get_instance method
+        instance_node = Node("instance", Glossary.INSTANCE, auto_link_relationships=True)
+        self.root.add(instance_node)
+        retrieved_instance = self.root.get_instance()
+        self.assertEqual(retrieved_instance, instance_node)
+        
+        # Test get_child method
+        child = self.root.get_child(":arg0")
+        self.assertEqual(child, self.child1)
+        
+        # Test make_equals with node parameter
+        node1 = Node("test1", ":rel1")
+        node2 = Node("test2", ":rel2")
+        node1.make_equals(node=node2)
+        self.assertEqual(node1.get_node_id(), node2.get_node_id())
+        
+        # Test legacy get_copy method
+        node_copy = self.root.get_copy()
+        self.assertNotEqual(id(self.root), id(node_copy))  # Different instances
+        self.assertEqual(self.root.var, node_copy.var)
+        
+        # Test set_status method
+        self.root.set_status(Glossary.NodeStatus.OK)
+        self.assertEqual(self.root.status, Glossary.NodeStatus.OK)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()

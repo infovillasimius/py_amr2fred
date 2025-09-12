@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from py_amr2fred.digraph_writer import DigraphWriter
 from py_amr2fred.glossary import Glossary, get_glossary_instance
-from py_amr2fred.node_refactored import Node
+from py_amr2fred.node import Node
 
 
 class TestDigraphWriter(unittest.TestCase):

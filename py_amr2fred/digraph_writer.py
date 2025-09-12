@@ -7,7 +7,7 @@ from typing import IO
 from rdflib import Graph, URIRef
 
 from .glossary import Glossary, get_glossary_instance
-from .node_refactored import Node
+from .node import Node
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)

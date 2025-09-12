@@ -4,7 +4,7 @@ from rdflib import Graph, URIRef, Literal
 from rdflib.namespace import NamespaceManager
 
 from .glossary import Glossary, get_glossary_instance
-from .node_refactored import Node
+from .node import Node
 
 
 class RdfWriter:

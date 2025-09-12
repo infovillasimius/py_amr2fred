@@ -5,7 +5,7 @@ from .glossary import Glossary, get_glossary_instance
 from .config_manager import ConfigurationManager
 from .singleton_mixin import SingletonMixin
 from .exception_handler import handle_file_operations, LogLevel
-from .node_refactored import Node
+from .node import Node
 
 
 class Propbank(SingletonMixin):

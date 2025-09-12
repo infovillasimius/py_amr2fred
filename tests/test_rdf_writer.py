@@ -3,7 +3,7 @@ import unittest
 from rdflib import Graph, URIRef, Literal
 
 from py_amr2fred.glossary import Glossary, get_glossary_instance
-from py_amr2fred.node_refactored import Node
+from py_amr2fred.node import Node
 from py_amr2fred.rdf_writer import RdfWriter
 
 

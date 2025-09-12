@@ -7,7 +7,7 @@ from .glossary import *
 from .config_manager import ConfigurationManager
 from .singleton_mixin import SingletonMixin
 from .exception_handler import handle_exceptions, LogLevel
-from .node_refactored import Node
+from .node import Node
 from .propbank import Propbank
 
 
