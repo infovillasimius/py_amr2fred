@@ -1,0 +1,38 @@
+{
+  "prefixes": {
+    "fred": "http://www.ontologydesignpatterns.org/ont/fred/domain.owl#",
+    "dul": "http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#",
+    "d0": "http://www.ontologydesignpatterns.org/ont/d0.owl#",
+    "boxer": "http://www.ontologydesignpatterns.org/ont/boxer/boxer.owl#",
+    "boxing": "http://www.ontologydesignpatterns.org/ont/boxer/boxing.owl#",
+    "quant": "http://www.ontologydesignpatterns.org/ont/fred/quantifiers.owl#",
+    "vn.role": "http://www.ontologydesignpatterns.org/ont/vn/abox/role/vnrole.owl#",
+    "vn.data": "http://www.ontologydesignpatterns.org/ont/vn/data/",
+    "amr": "https://w3id.org/framester/amr/",
+    "amrb": "https://w3id.org/framester/amrb/",
+    "va": "http://verbatlas.org/",
+    "bn": "http://babelnet.org/rdf/",
+    "wn30schema": "https://w3id.org/framester/wn/wn30/schema/",
+    "wn30instances": "https://w3id.org/framester/wn/wn30/instances/",
+    "fschema": "https://w3id.org/framester/schema/",
+    "pbdata": "https://w3id.org/framester/pb/data/",
+    "pbrs": "https://w3id.org/framester/data/propbank-3.4.0/RoleSet/",
+    "pblr": "https://w3id.org/framester/data/propbank-3.4.0/LocalRole/",
+    "pbgr": "https://w3id.org/framester/data/propbank-3.4.0/GenericRole/",
+    "pbschema": "https://w3id.org/framester/schema/propbank/",
+    "fnframe": "https://w3id.org/framester/framenet/abox/frame/",
+    "wikidata": "http://www.wikidata.org/entity/",
+    "schema": "https://schema.org/",
+    "dbr": "http://dbpedia.org/resource/",
+    "dbo": "http://dbpedia.org/ontology/",
+    "dbpedia": "http://dbpedia.org/resource/",
+    "schemaorg": "http://schema.org/",
+    "time": "https://www.w3.org/TR/xmlschema-2/#time",
+    "literal": ""
+  },
+  "standardPrefixes": {
+    "owl": "http://www.w3.org/2002/07/owl#",
+    "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "propbank": {
+    "roleMatrix": "py_amr2fred/propbankrolematrixaligned340.tsv",
+    "frameMatrix": "py_amr2fred/propbankframematrix340.tsv",
+    "version": "3.4.0",
+    "encoding": "utf-8",
+    "delimiter": "\t"
+  },
+  "linguistic": {
+    "adjectives": "py_amr2fred/adjectives.json"
+  },
+  "dataPaths": {
+    "baseDir": "data/",
+    "configDir": "py_amr2fred/config/",
+    "outputDir": "output/"
+  }
+}

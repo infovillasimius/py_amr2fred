@@ -4,11 +4,14 @@ from unidecode import unidecode
 
 from .couple import Couple
 from .glossary import *
+from .config_manager import ConfigurationManager
+from .singleton_mixin import SingletonMixin
+from .exception_handler import handle_exceptions, LogLevel
 from .node import Node
 from .propbank import Propbank
 
 
-class Parser:
+class Parser(SingletonMixin):
     """
     A class for parsing Abstract Meaning Representation (AMR) strings and transforming them
     into nodes representing logical structure.
@@ -30,18 +33,19 @@ class Parser:
 
     """
 
-    __parser = None
-
     def __init__(self):
-        self.nodes = []
-        self.nodes_copy = []
-        self.couples = []
-        self.removed = []
-        self.to_add = []
-        self.vars = []
-        self.root_copy = None
-        self.topic_flag = True
-        Parser.__parser = self
+        # Only initialize once per singleton instance
+        if not hasattr(self, '_initialized'):
+            self.nodes = []
+            self.nodes_copy = []
+            self.couples = []
+            self.removed = []
+            self.to_add = []
+            self.vars = []
+            self.root_copy = None
+            self.topic_flag = True
+            self.config = ConfigurationManager.get_instance()
+            self._initialized = True
 
     @staticmethod
     def get_parser():
@@ -52,9 +56,7 @@ class Parser:
 
         :rtype: Parser
         """
-        if Parser.__parser is None:
-            Parser.__parser = Parser()
-        return Parser.__parser
+        return Parser.get_instance()
 
     def reinitialise(self):
         """

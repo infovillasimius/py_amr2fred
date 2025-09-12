@@ -71,7 +71,7 @@ if __name__ == "__main__":
         
         # Draw the graph with node and edge labels
         plt.figure(figsize=(12, 8))
-        pos = nx.spring_layout(G, k=10, iterations=1)
+        pos = nx.spring_layout(G, k=20, iterations=5)
         
         # Draw nodes
         nx.draw_networkx_nodes(G, pos, node_color='lightblue', node_size=1000)

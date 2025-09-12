@@ -1,0 +1,86 @@
+{
+  "pronouns": {
+    "person": ["I", "i", "you", "You", "YOU", "we", "We", "WE", "they", "They", "THEY"],
+    "male": ["he", "He", "HE"], 
+    "female": ["she", "She", "SHE"],
+    "thing": ["It", "it", "IT", "that", "those", "this", "these"],
+    "thing2": ["It", "it", "IT"],
+    "demonstratives": ["that", "those", "this", "these"]
+  },
+  "conjunctions": [
+    "and", "or", "but", "nor", "so", "for", "yet", "after", "although",
+    "as-", "as-if", "as-long", "as-because", "before-", "even-if-", "even-though", 
+    "once", "since", "so-that", "though", "till", "unless", "until", "what",
+    "when", "whenever", "wherever", "whether", "while"
+  ],
+  "prepositions": [
+    "à-la", "aboard", "about", "above", "according-to", "across", "after",
+    "against", "ahead-of", "along", "along-with", "alongside", "amid", "amidst-",
+    "among-", "amongst", "anti", "apart-from", "around-", "as", "as-for", "as-per",
+    "as-to", "as-well-as", "aside-from", "astride", "at", "atop", "away-from",
+    "bar", "barring", "because-of", "before", "behind", "below", "beneath",
+    "beside", "besides", "between", "beyond", "but", "but-for", "by", "by-means-of",
+    "circa", "close-to", "concerning", "considering", "contrary-to", "counting",
+    "cum", "depending-on", "despite", "down", "due-to", "during", "except",
+    "except-for", "excepting", "excluding", "following", "for", "forward-of",
+    "from", "further-to", "given", "gone", "in", "in-addition-to", "in-between",
+    "in-case-of", "in-the-face-of", "in-favor-of", "in-front-of", "in-lieu-of",
+    "in-spite-of", "in-view-of", "including", "inside", "instead-of", "into",
+    "irrespective-of", "less", "like", "minus", "near", "near-to", "next-to",
+    "notwithstanding", "of", "off", "on", "on-account-of", "on-behalf-of",
+    "on-board", "on-to", "on-top-of", "onto", "opposite", "opposite-to",
+    "other-than", "out-of", "outside", "outside-of", "over", "owing-to", "past",
+    "pending", "per", "preparatory-to", "prior-to", "plus", "pro", "re",
+    "regarding", "regardless-of", "respecting", "round", "save", "save-for",
+    "saving", "since", "than", "thanks-to", "through", "throughout", "till",
+    "to", "together-with", "touching", "toward", "towards", "under", "underneath",
+    "unlike", "until", "up", "up-against", "up-to", "up-until", "upon", "versus",
+    "via", "vis-a-vis", "with", "with-reference-to", "with-regard-to", "within",
+    "without", "worth", "exact"
+  ],
+  "mannerAdverbs": [
+    "accidentally", "angrily", "anxiously", "awkwardly", "badly", "beautifully",
+    "blindly", "boldly", "bravely", "brightly", "busily", "calmly", "carefully",
+    "carelessly", "cautiously", "cheerfully", "clearly", "closely", "correctly",
+    "courageously", "cruelly", "daringly", "deliberately", "doubtfully", "eagerly",
+    "easily", "elegantly", "enormously", "enthusiastically", "equally", "eventually",
+    "exactly", "faithfully", "fast", "fatally", "fiercely", "fondly", "foolishly",
+    "fortunately", "frankly", "frantically", "generously", "gently", "gladly",
+    "gracefully", "greedily", "happily", "hard", "hastily", "healthily", "honestly",
+    "hungrily", "hurriedly", "inadequately", "ingeniously", "innocently",
+    "inquisitively", "irritably", "joyously", "justly", "kindly", "lazily",
+    "loosely", "loudly", "madly", "mortally", "mysteriously", "neatly", "nervously",
+    "noisily", "obediently", "openly", "painfully", "patiently", "perfectly",
+    "politely", "poorly", "powerfully", "promptly", "punctually", "quickly",
+    "quietly", "rapidly", "rarely", "really", "recklessly", "regularly",
+    "reluctantly", "repeatedly", "rightfully", "roughly", "rudely", "sadly",
+    "safely", "selfishly", "sensibly", "seriously", "sharply", "shyly", "silently",
+    "sleepily", "slowly", "smoothly", "so", "softly", "solemnly", "speedily",
+    "stealthily", "sternly", "straight", "stupidly", "successfully", "suddenly",
+    "suspiciously", "swiftly", "tenderly", "tensely", "thoughtfully", "tightly",
+    "truthfully", "unexpectedly", "victoriously", "violently", "vivaciously",
+    "warmly", "weakly", "wearily", "well", "wildly", "wisely"
+  ],
+  "adjectivesFile": "adjectives.json",
+  "genderTerms": {
+    "male": "male",
+    "female": "female", 
+    "neuter": "neuter",
+    "person": "person",
+    "multiple": "multiple"
+  },
+  "basicWords": {
+    "and": "and",
+    "or": "or",
+    "in": "in",
+    "city": "city",
+    "id": "id:",
+    "quote": "\"",
+    "of": "Of",
+    "by": "By"
+  },
+  "conditionalExpressions": {
+    "evenIf": "even-if",
+    "evenWhen": "even-when"
+  }
+}

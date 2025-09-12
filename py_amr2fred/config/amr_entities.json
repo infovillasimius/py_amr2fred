@@ -1,0 +1,86 @@
+{
+  "namedEntities": {
+    "person": ["person", "family"],
+    "organization": [
+      "organization", "company", "government-organization", "military",
+      "criminal-organization", "political-party", "market-sector", "school",
+      "university", "research-institute", "team", "league"
+    ],
+    "location": [
+      "location", "city", "city-district", "county", "state", "province",
+      "territory", "country", "local-region", "country-region", "world-region",
+      "continent"
+    ],
+    "geographical": [
+      "ocean", "sea", "lake", "river", "gulf", "bay", "strait", "canal",
+      "peninsula", "mountain", "volcano", "valley", "canyon", "island",
+      "desert", "forest"
+    ],
+    "astronomical": ["moon", "planet", "star", "constellation"],
+    "facility": [
+      "facility", "airport", "station", "port", "tunnel", "bridge", "road",
+      "railway-line", "canal", "building", "theater", "museum", "palace", "hotel",
+      "worship-place", "market", "sports-facility", "park", "zoo", "amusement-park"
+    ],
+    "event": [
+      "event", "incident", "natural-disaster", "earthquake", "war",
+      "conference", "game", "festival"
+    ],
+    "product": [
+      "product", "vehicle", "ship", "aircraft", "aircraft-type", "spaceship",
+      "car-make"
+    ],
+    "creative": [
+      "work-of-art", "picture", "music", "show", "broadcast-program",
+      "publication", "book", "newspaper", "magazine", "journal"
+    ],
+    "biological": [
+      "animal", "molecular-physical-entity", "small-molecule", "protein",
+      "protein-family", "protein-segment", "amino-acid", "macro-molecular-complex",
+      "enzyme", "nucleic-acid", "pathway", "gene", "dna-sequence", "cell",
+      "cell-line", "species", "taxon"
+    ],
+    "medical": ["disease", "medical-condition"],
+    "other": [
+      "thing", "language", "nationality", "ethnic-group", "regional-group",
+      "religious-group", "political-movement", "natural-object", "award",
+      "law", "court-decision", "treaty", "music-key", "musical-note",
+      "food-dish", "writing-script", "variable", "program"
+    ]
+  },
+  "specialEntities": [
+    "date-entity", "date-interval", "percentage-entity", "phone-number-entity",
+    "email-address-entity", "url-entity", "score-entity", "string-entity",
+    "value-interval"
+  ],
+  "quantityTypes": [
+    "monetary-quantity", "distance-quantity", "area-quantity", "volume-quantity",
+    "temporal-quantity", "frequency-quantity", "speed-quantity", "acceleration-quantity",
+    "mass-quantity", "force-quantity", "pressure-quantity", "energy-quantity",
+    "power-quantity", "voltage-quantity", "charge-quantity", "potential-quantity",
+    "resistance-quantity", "inductance-quantity", "magnetic-field-quantity",
+    "magnetic-flux-quantity", "radiation-quantity", "concentration-quantity",
+    "temperature-quantity", "score-quantity", "fuel-consumption-quantity",
+    "seismic-quantity"
+  ],
+  "dateComponents": {
+    "calendar": ":calendar",
+    "century": ":century",
+    "day": ":day",
+    "dayPeriod": ":dayperiod",
+    "decade": ":decade",
+    "era": ":era",
+    "month": ":month",
+    "quarter": ":quarter",
+    "season": ":season",
+    "timezone": ":timezone",
+    "weekday": ":weekday",
+    "year": ":year",
+    "year2": ":year2"
+  },
+  "specialInstances": {
+    "disjunct": "disjunct",
+    "conjunct": "conjunct"
+  },
+  "specialInstancesPrefixes": ["boxing", "boxing"]
+}

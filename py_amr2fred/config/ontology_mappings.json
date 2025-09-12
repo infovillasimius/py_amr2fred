@@ -1,0 +1,93 @@
+{
+  "dulConcepts": {
+    "events": "dul:Event",
+    "agents": "dul:Agent",
+    "concepts": "dul:Concept",
+    "informationEntities": "dul:InformationEntity",
+    "organisms": "dul:Organism",
+    "organizations": "dul:Organization",
+    "persons": "dul:Person",
+    "naturalPersons": "dul:NaturalPerson",
+    "substances": "dul:Substance"
+  },
+  "dulRelations": {
+    "hasQuality": "dul:hasQuality",
+    "hasDataValue": "dul:hasDataValue",
+    "associatedWith": "dul:associatedWith",
+    "hasMember": "dul:hasMember",
+    "hasPrecondition": "dul:hasPrecondition",
+    "hasAmount": "dul:hasAmount",
+    "precedes": "dul:precedes"
+  },
+  "boxingModalities": {
+    "necessary": "boxing:Necessary",
+    "possible": "boxing:Possible",
+    "hasModality": "boxing:hasModality",
+    "false": "boxing:False",
+    "truth": "boxing:Truth",
+    "hasTruthValue": "boxing:hasTruthValue",
+    "unknown": "boxing:Unknown"
+  },
+  "vnRoles": {
+    "location": "vn.role:Location",
+    "source": "vn.role:Source",
+    "destination": "vn.role:Destination",
+    "beneficiary": "vn.role:Beneficiary",
+    "time": "vn.role:Time",
+    "instrument": "vn.role:Instrument",
+    "cause": "vn.role:Cause",
+    "experiencer": "vn.role:Experiencer",
+    "theme": "vn.role:Theme",
+    "predicate": "vn.role:Predicate"
+  },
+  "boxerRoles": {
+    "agent": "boxer:agent",
+    "patient": "boxer:patient",
+    "theme": "boxer:theme"
+  },
+  "quantifiers": {
+    "every": "quant:every",
+    "hasDeterminer": "quant:hasDeterminer",
+    "hasQuantifier": "quant:hasQuantifier"
+  },
+  "owlConcepts": {
+    "thing": "owl:Thing",
+    "equivalentClass": "owl:equivalentClass",
+    "sameAs": "owl:sameAs",
+    "objectProperty": "owl:ObjectProperty",
+    "inverseOf": "owl:inverseOf",
+    "equivalentProperty": "owl:equivalentProperty",
+    "datatypeProperty": "owl:DatatypeProperty"
+  },
+  "rdfsRelations": {
+    "subClassOf": "rdfs:subClassOf",
+    "subPropertyOf": "rdfs:subPropertyOf",
+    "label": "rdfs:label"
+  },
+  "fredRelations": {
+    "topic": "fred:Topic",
+    "about": "fred:about",
+    "for": "fred:for",
+    "with": "fred:with",
+    "like": "fred:like",
+    "although": "fred:although",
+    "in": "fred:in",
+    "at": "fred:at",
+    "of": "fred:of",
+    "on": "fred:on",
+    "entails": "fred:entails",
+    "even": "fred:Even",
+    "when": "fred:when",
+    "include": "fred:include",
+    "asIf": "fred:as-if"
+  },
+  "dulsList": ["dul:Agent", "dul:Concept", "dul:InformationEntity", "dul:Organism", "dul:Organization", "dul:Substance", "d0:Topic", "d0:Location", "dul:Person"],
+  "dulsCheck": ["agent", "concept", "informationentity", "organism", "organization", "substance", "topic", "location", "person"],
+  "frameSchemaRelations": {
+    "semanticRole": "fschema:SemanticRole",
+    "subsumedUnder": "fschema:subsumedUnder"
+  },
+  "propbankRoles": {
+    "polarity": "pblr:polarity"
+  }
+}

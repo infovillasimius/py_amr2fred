@@ -2,10 +2,13 @@ import csv
 import os
 
 from .glossary import Glossary
+from .config_manager import ConfigurationManager
+from .singleton_mixin import SingletonMixin
+from .exception_handler import handle_file_operations, LogLevel
 from .node import Node
 
 
-class Propbank:
+class Propbank(SingletonMixin):
     """
     A class to represent Propbank data, which includes role and frame matrices.
 
@@ -14,15 +17,31 @@ class Propbank:
 
     """
 
-    current_directory = os.path.dirname(__file__)
-    SEPARATOR = "\t"
-    FILE1 = os.path.join(current_directory, "propbankrolematrixaligned340.tsv")
-    FILE2 = os.path.join(current_directory, "propbankframematrix340.tsv")
-    __propbank = None
-
     def __init__(self):
-        self.role_matrix = self.file_read(Propbank.FILE1)
-        self.frame_matrix = self.file_read(Propbank.FILE2)
+        # Only initialize once per singleton instance
+        if not hasattr(self, '_initialized'):
+            self.config = ConfigurationManager.get_instance()
+            propbank_config = self.config.data_sources.get_propbank_config()
+            
+            # Use configuration for file paths
+            role_matrix_path = self.config.data_sources.resolve_data_file_path(
+                propbank_config.get('roleMatrix', 'data/propbankrolematrixaligned340.tsv')
+            )
+            frame_matrix_path = self.config.data_sources.resolve_data_file_path(
+                propbank_config.get('frameMatrix', 'data/propbankframematrix340.tsv')
+            )
+            
+            self.role_matrix = self.file_read(
+                str(role_matrix_path), 
+                propbank_config.get('delimiter', '\t'),
+                propbank_config.get('encoding', 'utf-8')
+            )
+            self.frame_matrix = self.file_read(
+                str(frame_matrix_path),
+                propbank_config.get('delimiter', '\t'),
+                propbank_config.get('encoding', 'utf-8')
+            )
+            self._initialized = True
 
     @staticmethod
     def get_propbank():
@@ -33,11 +52,10 @@ class Propbank:
 
         :rtype: Propbank
         """
-        if Propbank.__propbank is None:
-            Propbank.__propbank = Propbank()
-        return Propbank.__propbank
+        return Propbank.get_instance()
 
     @staticmethod
+    @handle_file_operations(default_return=[[], []])
     def file_read(file_name: str, delimiter: str = "\t", encoding: str = "utf8") -> list:
         """
         Reads a TSV file and returns its header and rows.

@@ -1,0 +1,19 @@
+{
+  "text2amr": {
+    "default": "https://nlp.uniroma1.it/spring/api/text-to-amr?sentence=",
+    "spring": "https://arco.istc.cnr.it/spring/text-to-amr?blinkify=true&sentence=",
+    "fallback": "https://arco.istc.cnr.it/spring/text-to-amr?blinkify=true&sentence="
+  },
+  "multilingualAmr": {
+    "default": "https://arco.istc.cnr.it/usea/api/amr",
+    "usea": "https://arco.istc.cnr.it/usea/api/amr"
+  },
+  "requestConfig": {
+    "timeout": 30,
+    "retries": 3,
+    "headers": {
+      "User-Agent": "py-amr2fred/1.0",
+      "Accept": "application/json"
+    }
+  }
+}
