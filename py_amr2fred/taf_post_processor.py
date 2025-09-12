@@ -10,7 +10,7 @@ from rdflib import Graph, URIRef, Literal
 from rdflib.namespace import OWL, NamespaceManager, Namespace
 from wikimapper import WikiMapper
 
-from .glossary import Glossary
+from .glossary import get_glossary_instance
 
 nltk.download('wordnet')
 from nltk.corpus import wordnet
@@ -83,7 +83,7 @@ class TafPostProcessor:
             "r": "adverb"
         }
 
-    def disambiguate(self, text: str, rdf_graph: Graph, namespace: str | None = Glossary.FRED_NS) -> Graph:
+    def disambiguate(self, text: str, rdf_graph: Graph, namespace: str | None = None) -> Graph:
         """
         Disambiguates entities in an RDF graph using Word Sense Disambiguation (WSD) and links them to WordNet synsets.
 
@@ -102,6 +102,11 @@ class TafPostProcessor:
             graph.namespace_manager = self.namespace_manager
         else:
             return rdf_graph
+
+        # Use default FRED namespace if none provided
+        if namespace is None:
+            glossary = get_glossary_instance()
+            namespace = glossary.FRED_NS
 
         # SPARQL query to get the entities to disambiguate
         query = """
@@ -271,7 +276,7 @@ class TafPostProcessor:
             result = []
         return result
 
-    def disambiguate_usea(self, text: str, rdf_graph: Graph, namespace: str | None = Glossary.FRED_NS) -> Graph:
+    def disambiguate_usea(self, text: str, rdf_graph: Graph, namespace: str | None = None) -> Graph:
         """
         Disambiguates entities in a multilingual RDF graph using Word Sense Disambiguation (WSD)
         with the Usea algorithm and aligns them with WordNet synsets.
@@ -285,7 +290,7 @@ class TafPostProcessor:
         :type text: str
         :param rdf_graph: The RDF graph containing entities to be disambiguated.
         :type rdf_graph: Graph
-        :param namespace: The namespace prefix (optional) for filtering entities. Defaults to `Glossary.FRED_NS`.
+        :param namespace: The namespace prefix (optional) for filtering entities. Defaults to FRED namespace.
 
         :rtype: Graph
         :return: The updated RDF graph with entities linked to WordNet synsets when possible.
@@ -295,6 +300,11 @@ class TafPostProcessor:
             graph.namespace_manager = self.namespace_manager
         else:
             return rdf_graph
+
+        # Use default FRED namespace if none provided
+        if namespace is None:
+            glossary = get_glossary_instance()
+            namespace = glossary.FRED_NS
 
         # SPARQL query to get the entities to disambiguate
         query = """

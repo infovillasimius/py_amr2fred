@@ -211,6 +211,25 @@ class NamespaceManager:
         if namespace:
             return f"{namespace}{local_name}"
         return prefixed_name
+    
+    def set_namespace(self, prefix: str, namespace_uri: str) -> None:
+        """
+        Set or update namespace URI for a given prefix.
+        
+        Args:
+            prefix: The prefix to set
+            namespace_uri: The namespace URI to associate with the prefix
+        """
+        # Ensure namespaces config is loaded
+        if self._namespaces_config is None:
+            self._namespaces_config = self._config_manager.load_config('namespaces')
+        
+        # Ensure we have a prefixes dict
+        if 'prefixes' not in self._namespaces_config:
+            self._namespaces_config['prefixes'] = {}
+        
+        # Set the namespace
+        self._namespaces_config['prefixes'][prefix] = namespace_uri
 
 
 class AMRPatternMatcher:

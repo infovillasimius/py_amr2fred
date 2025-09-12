@@ -6,8 +6,8 @@ from typing import IO
 
 from rdflib import Graph, URIRef
 
-from .glossary import Glossary
-from .node import Node
+from .glossary import Glossary, get_glossary_instance
+from .node_refactored import Node
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -38,9 +38,10 @@ class DigraphWriter:
         # new_root = check_visibility(root)  # Uncomment if check_visibility is needed
         new_root = root
 
-        digraph = Glossary.DIGRAPH_INI
+        glossary = get_glossary_instance()
+        digraph = glossary.DIGRAPH_INI
         digraph += DigraphWriter.to_digraph(new_root)
-        return digraph + Glossary.DIGRAPH_END
+        return digraph + glossary.DIGRAPH_END
 
     @staticmethod
     def to_digraph(root: Node) -> str:
@@ -54,11 +55,12 @@ class DigraphWriter:
         :return: A string in DOT format representing the hierarchical structure.
         :rtype: str
         """
+        glossary = get_glossary_instance()
         shape = "box"
         if root.malformed:
             shape = "ellipse"
         digraph = f'"{root.var}" [label="{root.var}", shape={shape},'
-        if root.var.startswith(Glossary.FRED):
+        if root.var.startswith(glossary.FRED):
             digraph += ' color="0.5 0.3 0.5"];\n'
         else:
             digraph += ' color="1.0 0.3 0.7"];\n'
@@ -67,11 +69,11 @@ class DigraphWriter:
                 if a.visibility:
                     shape = "ellipse" if a.malformed else "box"
                     digraph += f'"{a.var}" [label="{a.var}", shape={shape},'
-                    if a.var.startswith(Glossary.FRED):
+                    if a.var.startswith(glossary.FRED):
                         digraph += ' color="0.5 0.3 0.5"];\n'
                     else:
                         digraph += ' color="1.0 0.3 0.7"];\n'
-                    if a.relation.lower() != Glossary.TOP.lower():
+                    if a.relation.lower() != glossary.TOP.lower():
                         digraph += f'"{root.var}" -> "{a.var}" [label="{a.relation}"];\n'
                     digraph += DigraphWriter.to_digraph(a)
         return digraph
@@ -184,9 +186,10 @@ class DigraphWriter:
         :return: A string in DOT format representing the RDF graph.
         :rtype: str
         """
+        glossary = get_glossary_instance()
         if not_visible_graph is None:
             not_visible_graph = Graph
-        digraph = Glossary.DIGRAPH_INI
+        digraph = glossary.DIGRAPH_INI
         for s, p, o in graph:
             if (s, p, o) not in not_visible_graph:
                 ss = graph.qname(s)
@@ -195,14 +198,14 @@ class DigraphWriter:
                 oo = oo.replace("\"", "'")
                 shape = "box"
                 digraph += f'"{ss}" [label="{ss}", shape={shape},'
-                if ss.startswith(Glossary.FRED):
+                if ss.startswith(glossary.FRED):
                     digraph += ' color="0.5 0.3 0.5"];\n'
                 else:
                     digraph += ' color="1.0 0.3 0.7"];\n'
                 digraph += f'"{oo}" [label="{oo}", shape={shape},'
-                if oo.startswith(Glossary.FRED):
+                if oo.startswith(glossary.FRED):
                     digraph += ' color="0.5 0.3 0.5"];\n'
                 else:
                     digraph += ' color="1.0 0.3 0.7"];\n'
                 digraph += f'"{ss}" -> "{oo}" [label="{pp}"];\n'
-        return digraph + Glossary.DIGRAPH_END
+        return digraph + glossary.DIGRAPH_END

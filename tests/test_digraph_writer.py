@@ -3,18 +3,19 @@ import unittest
 from unittest.mock import patch
 
 from py_amr2fred.digraph_writer import DigraphWriter
-from py_amr2fred.glossary import Glossary
-from py_amr2fred.node import Node
+from py_amr2fred.glossary import Glossary, get_glossary_instance
+from py_amr2fred.node_refactored import Node
 
 
 class TestDigraphWriter(unittest.TestCase):
     def setUp(self):
         Node.endless = 0
-        self.root = Node(Glossary.FRED + "entity1", Glossary.TOP)
+        self.glossary = get_glossary_instance()
+        self.root = Node(self.glossary.FRED + "entity1", self.glossary.TOP)
         self.root.set_status(Glossary.NodeStatus.OK)
-        self.child1 = Node(Glossary.FRED + "entity2", relation=Glossary.FRED + "hasRelation")
+        self.child1 = Node(self.glossary.FRED + "entity2", relation=self.glossary.FRED + "hasRelation")
         self.child1.set_status(Glossary.NodeStatus.OK)
-        self.child2 = Node(Glossary.FRED + "entity3", relation=Glossary.FRED + "hasOtherRelation")
+        self.child2 = Node(self.glossary.FRED + "entity3", relation=self.glossary.FRED + "hasOtherRelation")
         self.child2.set_status(Glossary.NodeStatus.OK)
         self.root.node_list.append(self.child1)
         self.root.node_list.append(self.child2)
@@ -22,11 +23,11 @@ class TestDigraphWriter(unittest.TestCase):
     def test_node_to_digraph(self):
         """Test converting a Node structure to DOT format."""
         digraph_output = DigraphWriter.node_to_digraph(self.root)
-        self.assertIn(Glossary.FRED + "entity1", digraph_output)
-        self.assertIn(Glossary.FRED + "entity2", digraph_output)
-        self.assertIn(Glossary.FRED + "hasRelation", digraph_output)
-        self.assertIn(Glossary.FRED + "entity3", digraph_output)
-        self.assertIn(Glossary.FRED + "hasOtherRelation", digraph_output)
+        self.assertIn(self.glossary.FRED + "entity1", digraph_output)
+        self.assertIn(self.glossary.FRED + "entity2", digraph_output)
+        self.assertIn(self.glossary.FRED + "hasRelation", digraph_output)
+        self.assertIn(self.glossary.FRED + "entity3", digraph_output)
+        self.assertIn(self.glossary.FRED + "hasOtherRelation", digraph_output)
 
     def test_to_digraph(self):
         """Test recursive conversion of nodes to DOT format."""

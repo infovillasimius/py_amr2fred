@@ -1,7 +1,7 @@
 import unittest
 
 from py_amr2fred.glossary import Glossary
-from py_amr2fred.node import Node
+from py_amr2fred.node_refactored import Node
 
 
 class TestNode(unittest.TestCase):

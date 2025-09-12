@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch, mock_open
 
 from py_amr2fred.glossary import Glossary
-from py_amr2fred.node import Node
+from py_amr2fred.node_refactored import Node
 from py_amr2fred.propbank import Propbank
 
 

@@ -69,6 +69,7 @@ class Node:
         Node.unique_id += 1
         self.verb: str = var
         self.malformed: bool = False
+        self.glossary = Glossary()
 
     def __str__(self):
         if Node.endless > Glossary.ENDLESS:
@@ -164,10 +165,10 @@ class Node:
         :return: A node with an inverse relation or `None` if no such node is found.
         """
         for node in self.node_list:
-            if (re.search(Glossary.AMR_INVERSE, node.relation) and
-                    node.relation != Glossary.AMR_PREP_ON_BEHALF_OF and
-                    node.relation != Glossary.AMR_CONSIST_OF and
-                    node.relation != Glossary.AMR_PART_OF and
+            if (re.search(self.glossary.AMR_INVERSE, node.relation) and
+                    node.relation != self.glossary.AMR_PREP_ON_BEHALF_OF and
+                    node.relation != self.glossary.AMR_CONSIST_OF and
+                    node.relation != self.glossary.AMR_PART_OF and
                     node.relation != Glossary.AMR_SUB_EVENT_OF and
                     node.relation != Glossary.AMR_QUANT_OF and
                     node.relation != Glossary.AMR_SUBSET_OF):
@@ -191,10 +192,10 @@ class Node:
         if nodes is None:
             nodes: list[Node] = []
             for node in self.node_list:
-                if (re.match(Glossary.AMR_INVERSE, node.relation) and
-                        node.relation != Glossary.AMR_PREP_ON_BEHALF_OF and
-                        node.relation != Glossary.AMR_CONSIST_OF and
-                        node.relation != Glossary.AMR_PART_OF and
+                if (re.match(self.glossary.AMR_INVERSE, node.relation) and
+                        node.relation != self.glossary.AMR_PREP_ON_BEHALF_OF and
+                        node.relation != self.glossary.AMR_CONSIST_OF and
+                        node.relation != self.glossary.AMR_PART_OF and
                         node.relation != Glossary.AMR_SUB_EVENT_OF and
                         node.relation != Glossary.AMR_QUANT_OF and
                         node.relation != Glossary.AMR_SUBSET_OF and
@@ -202,10 +203,10 @@ class Node:
                     nodes.append(node)
         else:
             for node in self.node_list:
-                if (re.match(Glossary.AMR_INVERSE, node.relation) and
-                        node.relation != Glossary.AMR_PREP_ON_BEHALF_OF and
-                        node.relation != Glossary.AMR_CONSIST_OF and
-                        node.relation != Glossary.AMR_PART_OF and
+                if (re.match(self.glossary.AMR_INVERSE, node.relation) and
+                        node.relation != self.glossary.AMR_PREP_ON_BEHALF_OF and
+                        node.relation != self.glossary.AMR_CONSIST_OF and
+                        node.relation != self.glossary.AMR_PART_OF and
                         node.relation != Glossary.AMR_SUB_EVENT_OF and
                         node.relation != Glossary.AMR_QUANT_OF and
                         node.relation != Glossary.AMR_SUBSET_OF and
@@ -418,7 +419,7 @@ class Node:
         """
         ops_list: list[Node] = []
         for node in self.node_list:
-            if re.match(Glossary.AMR_OP, node.relation):
+            if re.match(self.glossary.AMR_OP, node.relation):
                 ops_list.append(node)
         return ops_list
 

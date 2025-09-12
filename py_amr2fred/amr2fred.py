@@ -7,7 +7,7 @@ import requests
 from rdflib import Graph
 
 from .digraph_writer import DigraphWriter
-from .glossary import Glossary
+from .glossary import Glossary, get_glossary_instance
 from .parser import Parser
 from .rdf_writer import RdfWriter
 from .taf_post_processor import TafPostProcessor
@@ -30,6 +30,7 @@ class Amr2fred:
         self.parser = Parser.get_parser()
         self.writer = RdfWriter()
         self.spring_uri = "https://arco.istc.cnr.it/spring/text-to-amr?blinkify=true&sentence="
+        self.glossary = get_glossary_instance()
 
         self.spring_uni_uri = ("https://nlp.uniroma1.it/spring/api/text-to-amr?sentence="
                                if txt2amr_uri is None else txt2amr_uri)
@@ -63,11 +64,11 @@ class Amr2fred:
             return "Nothing to do!"
 
         if alt_fred_ns is not None:
-            Glossary.FRED_NS = alt_fred_ns
-            Glossary.NAMESPACE[0] = alt_fred_ns
+            self.glossary.FRED_NS = alt_fred_ns
         else:
-            Glossary.FRED_NS = Glossary.DEFAULT_FRED_NS
-            Glossary.NAMESPACE[0] = Glossary.DEFAULT_FRED_NS
+            # Reset to default namespace
+            default_ns = self.glossary.DEFAULT_FRED_NS
+            self.glossary.FRED_NS = default_ns
 
         if amr is None and text is not None:
             amr = self.get_amr(text, alt_api, multilingual)

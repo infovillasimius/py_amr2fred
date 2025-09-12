@@ -10,7 +10,7 @@ from enum import Enum
 import copy
 from .node_core import NodeCore
 from .node_relations import NodeRelations
-from .config_manager import NodeStatus, NodeType
+from .glossary import Glossary
 from .exception_handler import recursion_guard
 
 
@@ -36,7 +36,7 @@ class Node:
     """
     
     def __init__(self, var: str, relation: str = "", 
-                 status: NodeStatus = NodeStatus.AMR, 
+                 status: Glossary.NodeStatus = Glossary.NodeStatus.AMR, 
                  visibility: bool = True):
         """
         Initialize a new Node instance.
@@ -100,22 +100,22 @@ class Node:
         self.core.set_verb(value)
     
     @property
-    def status(self) -> NodeStatus:
+    def status(self) -> Glossary.NodeStatus:
         """Get the node status."""
         return self.core.status
     
     @status.setter
-    def status(self, value: NodeStatus) -> None:
+    def status(self, value: Glossary.NodeStatus) -> None:
         """Set the node status."""
         self.core.set_status(value)
     
     @property
-    def node_type(self) -> NodeType:
+    def node_type(self) -> Glossary.NodeType:
         """Get the node type."""
         return self.core.node_type
     
     @node_type.setter
-    def node_type(self, value: NodeType) -> None:
+    def node_type(self, value: Glossary.NodeType) -> None:
         """Set the node type."""
         self.core.set_node_type(value)
     
@@ -152,8 +152,9 @@ class Node:
     # Backward compatibility properties - delegate to relations
     @property
     def node_list(self) -> List['Node']:
-        """Get the list of child nodes."""
-        return self.relations.get_children()
+        """Get the list of child nodes - returns reference to internal list for backward compatibility."""
+        # Return reference to actual list, not copy, for backward compatibility
+        return self.relations.node_list
     
     @node_list.setter
     def node_list(self, value: List['Node']) -> None:
@@ -214,19 +215,19 @@ class Node:
         """Set the node relation."""
         self.core.set_relation(relation)
     
-    def get_status(self) -> NodeStatus:
+    def get_status(self) -> Glossary.NodeStatus:
         """Get the node status."""
         return self.core.get_status()
     
-    def set_status(self, status: NodeStatus) -> None:
+    def set_status(self, status: Glossary.NodeStatus) -> None:
         """Set the node status."""
         self.core.set_status(status)
     
-    def get_node_type(self) -> NodeType:
+    def get_node_type(self) -> Glossary.NodeType:
         """Get the node type."""
         return self.core.get_node_type()
     
-    def set_node_type(self, node_type: NodeType) -> None:
+    def set_node_type(self, node_type: Glossary.NodeType) -> None:
         """Set the node type."""
         self.core.set_node_type(node_type)
     
@@ -412,7 +413,7 @@ class Node:
         self.depth_first_search(collect_matches)
         return results
     
-    def find_by_status(self, status: NodeStatus) -> List['Node']:
+    def find_by_status(self, status: Glossary.NodeStatus) -> List['Node']:
         """
         Find all nodes with a specific status.
         
@@ -513,7 +514,7 @@ class Node:
         
         return vars_list
     
-    def prune_by_status(self, status_to_remove: NodeStatus) -> int:
+    def prune_by_status(self, status_to_remove: Glossary.NodeStatus) -> int:
         """
         Remove all nodes with a specific status from the subtree.
         
@@ -620,3 +621,54 @@ class Node:
     def __repr__(self) -> str:
         """String representation for debugging."""
         return f"Node(id={self.core.node_id}, var='{self.var}', relation='{self.relation}')"
+    
+    # Backward compatibility methods for old Node API
+    def add(self, child_node: 'Node') -> 'Node':
+        """Add child node for backward compatibility."""
+        self.relations.add_child(child_node)
+        return child_node
+    
+    def get_child(self, relation: str) -> Optional['Node']:
+        """Get child by relation for backward compatibility."""
+        children = self.relations.get_children_by_relation(relation)
+        return children[0] if children else None
+    
+    def get_children(self, relation: str) -> List['Node']:
+        """Get children by relation for backward compatibility."""
+        return self.relations.get_children_by_relation(relation)
+        
+    def get_instance(self) -> Optional['Node']:
+        """Get INSTANCE child for backward compatibility."""
+        return self.get_child("instance")
+        
+    def make_equals(self, node: 'Node') -> None:
+        """Set node ID equal to another node for backward compatibility."""
+        self.core._NodeCore__node_id = node.core._NodeCore__node_id
+        
+    def get_node_id(self) -> str:
+        """Get node ID for backward compatibility."""
+        return str(self.core._NodeCore__node_id)
+    
+    def get_tree_status(self) -> int:
+        """
+        Calculate the cumulative status of the node tree.
+        
+        Returns:
+            Cumulative status value of node and all children
+        """
+        # Add recursion protection (from original implementation)
+        if hasattr(self, '_status_calculation_depth'):
+            self._status_calculation_depth += 1
+        else:
+            self._status_calculation_depth = 0
+            
+        if self._status_calculation_depth > 100:  # Prevent infinite recursion
+            self._status_calculation_depth = 0
+            return 1000000
+        
+        status_sum = self.status.value
+        for child in self.node_list:
+            status_sum += child.get_tree_status()
+        
+        self._status_calculation_depth = 0
+        return status_sum

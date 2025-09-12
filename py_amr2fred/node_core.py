@@ -6,7 +6,8 @@ for nodes, separated from relationship management and operations.
 """
 
 from typing import Optional
-from .config_manager import ConfigurationManager, NodeStatus, NodeType
+from .config_manager import ConfigurationManager
+from .glossary import Glossary
 from .exception_handler import recursion_guard
 
 
@@ -21,7 +22,7 @@ class NodeCore:
     _unique_id_counter = 0
     
     def __init__(self, var: str, relation: str, 
-                 status: NodeStatus = NodeStatus.AMR, 
+                 status: Glossary.NodeStatus = Glossary.NodeStatus.AMR, 
                  visibility: bool = True):
         """
         Initialize core node data.
@@ -45,8 +46,8 @@ class NodeCore:
         self.malformed: bool = False
         
         # Status and type
-        self.status: NodeStatus = status
-        self.node_type: NodeType = NodeType.OTHER
+        self.status: Glossary.NodeStatus = status
+        self.node_type: Glossary.NodeType = Glossary.NodeType.OTHER
         
         # Configuration access
         self.config = ConfigurationManager.get_instance()
@@ -97,19 +98,19 @@ class NodeCore:
         """Set the node verb."""
         self.verb = verb
     
-    def get_status(self) -> NodeStatus:
+    def get_status(self) -> Glossary.NodeStatus:
         """Get the node status."""
         return self.status
     
-    def set_status(self, status: NodeStatus) -> None:
+    def set_status(self, status: Glossary.NodeStatus) -> None:
         """Set the node status."""
         self.status = status
     
-    def get_node_type(self) -> NodeType:
+    def get_node_type(self) -> Glossary.NodeType:
         """Get the node type."""
         return self.node_type
     
-    def set_node_type(self, node_type: NodeType) -> None:
+    def set_node_type(self, node_type: Glossary.NodeType) -> None:
         """Set the node type."""
         self.node_type = node_type
     

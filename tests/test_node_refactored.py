@@ -3,6 +3,7 @@
 import unittest
 from py_amr2fred.node_refactored import Node, CopyMode
 from py_amr2fred.config_manager import NodeStatus, NodeType
+from py_amr2fred.glossary import Glossary
 
 
 class TestNodeRefactored(unittest.TestCase):
@@ -19,7 +20,7 @@ class TestNodeRefactored(unittest.TestCase):
         node = Node("test", ":relation")
         self.assertEqual(node.var, "test")
         self.assertEqual(node.relation, ":relation")
-        self.assertEqual(node.status, NodeStatus.AMR)
+        self.assertEqual(node.status, Glossary.NodeStatus.AMR)
         self.assertTrue(node.visibility)
 
     def test_core_properties(self):
@@ -29,16 +30,16 @@ class TestNodeRefactored(unittest.TestCase):
         # Test getters
         self.assertEqual(node.get_var(), "test")
         self.assertEqual(node.get_relation(), ":relation")
-        self.assertEqual(node.get_status(), NodeStatus.AMR)
+        self.assertEqual(node.get_status(), Glossary.NodeStatus.AMR)
         
         # Test setters
         node.set_var("new_var")
         node.set_relation(":new_relation")
-        node.set_status(NodeStatus.OK)
+        node.set_status(Glossary.NodeStatus.OK)
         
         self.assertEqual(node.var, "new_var")
         self.assertEqual(node.relation, ":new_relation")
-        self.assertEqual(node.status, NodeStatus.OK)
+        self.assertEqual(node.status, Glossary.NodeStatus.OK)
 
     def test_relationship_management(self):
         """Test parent-child relationships."""

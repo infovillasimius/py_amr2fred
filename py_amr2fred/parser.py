@@ -45,6 +45,7 @@ class Parser(SingletonMixin):
             self.root_copy = None
             self.topic_flag = True
             self.config = ConfigurationManager.get_instance()
+            self.glossary = Glossary()
             self._initialized = True
 
     @staticmethod
@@ -98,10 +99,10 @@ class Parser(SingletonMixin):
                 fine = amr.index(" ", inizio)
                 word = amr[inizio:fine]
 
-                if not word.startswith(Glossary.QUOTE):
+                if not word.startswith(self.glossary.QUOTE):
                     word_list.append(word.lower())
                 else:
-                    fine = amr.index(Glossary.QUOTE, inizio + 1)
+                    fine = amr.index(self.glossary.QUOTE, inizio + 1)
                     word = amr[inizio: fine]
                     word = word.strip()
                     while "  " in word:
@@ -112,10 +113,10 @@ class Parser(SingletonMixin):
                     word = word.replace("(_", "(")
                     word = word.replace("_)", ")")
                     word = word.replace("_/_", "/")
-                    while Glossary.QUOTE in word:
-                        word = word.replace(Glossary.QUOTE, "")
+                    while self.glossary.QUOTE in word:
+                        word = word.replace(self.glossary.QUOTE, "")
 
-                    word_list.append(Glossary.LITERAL + word.replace(Glossary.QUOTE, ""))
+                    word_list.append(self.glossary.LITERAL + word.replace(self.glossary.QUOTE, ""))
 
                 amr = amr[fine:]
 
@@ -731,7 +732,7 @@ class Parser(SingletonMixin):
             return root
         flag = True
         instance = self.get_instance_alt(root.get_node_id())
-        if isinstance(instance, Node) and len(instance.var) > 3 and re.fullmatch(Glossary.AMR_VERB, instance.var[3:]):
+        if isinstance(instance, Node) and len(instance.var) > 3 and re.fullmatch(self.glossary.AMR_VERB, instance.var[3:]):
             flag = False
 
         dom = root.get_child(Glossary.AMR_DOMAIN)
@@ -910,7 +911,7 @@ class Parser(SingletonMixin):
                     n.relation = Glossary.DUL_HAS_MEMBER
 
             # special cases with personal pronouns and demonstrative adjectives
-            if node.var in Glossary.PERSON:
+            if node.var in self.glossary.PERSON:
                 node.var = Glossary.FRED_PERSON
                 # self.set_equals(root)
                 root.prefix = True
@@ -993,15 +994,15 @@ class Parser(SingletonMixin):
                 if node.relation == Glossary.AMR_QUANT:
                     node.relation = Glossary.AMR + Glossary.AMR_QUANT[1:]
 
-            elif " " + node.var + " " in Glossary.MALE:
+            elif " " + node.var + " " in self.glossary.MALE:
                 node.var = Glossary.FRED_MALE
                 self.set_equals(root)
 
-            elif " " + node.var + " " in Glossary.FEMALE:
+            elif " " + node.var + " " in self.glossary.FEMALE:
                 node.var = Glossary.FRED_FEMALE
                 self.set_equals(root)
 
-            elif " " + node.var + " " in Glossary.THING:
+            elif " " + node.var + " " in self.glossary.THING:
                 node.var = Glossary.FRED_NEUTER
                 node.add(Node(Glossary.OWL_THING, Glossary.RDF_TYPE, Glossary.NodeStatus.OK))
                 self.set_equals(root)
@@ -1089,7 +1090,7 @@ class Parser(SingletonMixin):
                   and self.is_verb(node_instance.var)):
                 node.relation = Glossary.FRED + root.get_instance().var[:-3] + Glossary.BY
 
-            elif node.relation.startswith(Glossary.AMR_PREP):
+            elif node.relation.startswith(self.glossary.AMR_PREP):
                 node.relation = node.relation.replace(Glossary.AMR_PREP, Glossary.FRED)
 
             elif (node.relation == Glossary.AMR_PART_OF or node.relation == Glossary.AMR_CONSIST_OF
@@ -1533,7 +1534,8 @@ class Parser(SingletonMixin):
         """
         prb = Propbank.get_propbank()
         if node_list is None and isinstance(var, str):
-            result = prb.frame_find(Glossary.PB_ROLESET + var, Glossary.PropbankFrameFields.PB_Frame)
+            glossary = Glossary()
+            result = prb.frame_find(glossary.PB_ROLESET + var, Glossary.PropbankFrameFields.PB_Frame)
             return result is not None and len(result) > 0
         elif isinstance(var, str) and isinstance(node_list, list):
             result = prb.list_find(var, node_list)
@@ -1719,7 +1721,7 @@ class Parser(SingletonMixin):
                 quant = root.get_child(Glossary.AMR_QUANT)
                 root.get_instance().var = quant.get_instance().var.replace(Glossary.QUANTITY, "")
 
-        if len(instance.var) > 3 and re.match(Glossary.AMR_VERB, instance.var[-3:]) and not self.is_verb(
+        if len(instance.var) > 3 and re.match(self.glossary.AMR_VERB, instance.var[-3:]) and not self.is_verb(
                 instance.var) and len(root.get_args()) == 1:
             self.topic_flag = False
             arg = root.get_args()[0]

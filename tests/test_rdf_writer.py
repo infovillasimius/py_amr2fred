@@ -2,8 +2,8 @@ import unittest
 
 from rdflib import Graph, URIRef, Literal
 
-from py_amr2fred.glossary import Glossary
-from py_amr2fred.node import Node
+from py_amr2fred.glossary import Glossary, get_glossary_instance
+from py_amr2fred.node_refactored import Node
 from py_amr2fred.rdf_writer import RdfWriter
 
 
@@ -12,6 +12,7 @@ class TestRdfWriter(unittest.TestCase):
     def setUp(self):
         """Initialize an RdfWriter instance before each test."""
         self.writer = RdfWriter()
+        self.glossary = get_glossary_instance()
 
     def test_new_graph_initialization(self):
         """Test if a new graph is correctly initialized."""
@@ -29,13 +30,13 @@ class TestRdfWriter(unittest.TestCase):
     def test_get_uri_standard(self):
         """Test URI generation for normal variables."""
         test_var = "exampleVar"
-        expected_uri = Glossary.FRED_NS + test_var
+        expected_uri = self.glossary.FRED_NS + test_var
         self.assertEqual(self.writer.get_uri(test_var), expected_uri)
 
     def test_get_uri_prefixed(self):
         """Test URI generation for prefixed variables."""
-        test_var = Glossary.DUL
-        expected_uri = Glossary.DUL_NS
+        test_var = self.glossary.DUL
+        expected_uri = self.glossary.DUL_NS
         self.assertEqual(self.writer.get_uri(test_var), expected_uri)
 
     def test_get_uri_blank_node(self):
@@ -45,7 +46,7 @@ class TestRdfWriter(unittest.TestCase):
 
     def test_to_rdf(self):
         """Test converting a simple Node structure to RDF."""
-        root = Node("entity1", Glossary.TOP)
+        root = Node("entity1", self.glossary.TOP)
         child1 = Node("entity2", relation="hasRelation")
         child2 = Node("entity3", relation="hasOtherRelation")
 
@@ -55,12 +56,12 @@ class TestRdfWriter(unittest.TestCase):
         self.writer.to_rdf(root)
 
         # Expected triples
-        s1 = URIRef(Glossary.FRED_NS + "entity1")
-        p1 = URIRef(Glossary.FRED_NS + "hasRelation")
-        o1 = Literal("entity2", datatype=Glossary.STRING_SCHEMA_NS)  # Expected as a Literal
+        s1 = URIRef(self.glossary.FRED_NS + "entity1")
+        p1 = URIRef(self.glossary.FRED_NS + "hasRelation")
+        o1 = Literal("entity2", datatype=self.glossary.STRING_SCHEMA_NS)  # Expected as a Literal
 
-        p2 = URIRef(Glossary.FRED_NS + "hasOtherRelation")
-        o2 = Literal("entity3", datatype=Glossary.STRING_SCHEMA_NS)
+        p2 = URIRef(self.glossary.FRED_NS + "hasOtherRelation")
+        o2 = Literal("entity3", datatype=self.glossary.STRING_SCHEMA_NS)
 
         # Assertions
         self.assertIn((s1, p1, o1), self.writer.graph)  # Ensure entity2 is a Literal

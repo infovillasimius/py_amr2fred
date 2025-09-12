@@ -76,6 +76,18 @@ class NodeRelations:
         """Check if node has any children."""
         return len(self.node_list) > 0
     
+    def get_children_by_relation(self, relation: str) -> List['Node']:
+        """
+        Get child nodes with a specific relation.
+        
+        Args:
+            relation: The relation to filter by
+            
+        Returns:
+            List of child nodes with matching relation
+        """
+        return [child for child in self.node_list if hasattr(child, 'relation') and child.relation == relation]
+    
     def set_parent(self, parent: 'Node') -> None:
         """
         Set the primary parent node.

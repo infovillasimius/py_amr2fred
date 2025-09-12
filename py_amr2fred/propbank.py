@@ -1,11 +1,11 @@
 import csv
 import os
 
-from .glossary import Glossary
+from .glossary import Glossary, get_glossary_instance
 from .config_manager import ConfigurationManager
 from .singleton_mixin import SingletonMixin
 from .exception_handler import handle_file_operations, LogLevel
-from .node import Node
+from .node_refactored import Node
 
 
 class Propbank(SingletonMixin):
@@ -149,13 +149,14 @@ class Propbank(SingletonMixin):
         :return: A list of roles if enough matches are found, or None.
         :rtype: list | None
         """
+        glossary = get_glossary_instance()
         result = []
         num = len(args)
         cfr = 0
-        if Glossary.PB_ROLESET not in word:
-            word = Glossary.PB_ROLESET + word
+        if glossary.PB_ROLESET not in word:
+            word = glossary.PB_ROLESET + word
         for node in args:
-            r = Glossary.PB_SCHEMA + node.relation[1:]
+            r = glossary.PB_SCHEMA + node.relation[1:]
             res = self.role_find(r, Glossary.PropbankRoleFields.PB_ARG, word, Glossary.PropbankRoleFields.PB_Frame)
             if len(res) > 0:
                 result.append(res[0])
