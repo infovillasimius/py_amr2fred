@@ -21,17 +21,21 @@ class NodeRelations:
     - Circular reference detection
     """
     
-    def __init__(self, node_core: NodeCore):
+    def __init__(self, node_core: NodeCore, auto_link_relationships: bool = False):
         """
         Initialize relationship manager for a node.
         
         Args:
             node_core: The core node data this manages relationships for
+            auto_link_relationships: If True, automatically create bidirectional 
+                                   parent-child links. If False, maintain compatibility
+                                   with original Node behavior.
         """
         self.core = node_core
         self.node_list: List['Node'] = []  # Child nodes
         self.parent: Optional['Node'] = None  # Primary parent
         self.parent_list: List['Node'] = []  # All parents (for non-tree structures)
+        self.auto_link_relationships = auto_link_relationships
         
     def add_child(self, child: 'Node') -> None:
         """
@@ -42,8 +46,8 @@ class NodeRelations:
         """
         if child not in self.node_list:
             self.node_list.append(child)
-            # Set this as parent of the child
-            if hasattr(child, 'relations'):
+            # Conditionally set parent relationship based on configuration
+            if self.auto_link_relationships and hasattr(child, 'relations'):
                 child.relations.set_parent(self._get_node())
     
     def remove_child(self, child: 'Node') -> bool:
@@ -58,15 +62,15 @@ class NodeRelations:
         """
         if child in self.node_list:
             self.node_list.remove(child)
-            # Remove parent reference from child
-            if hasattr(child, 'relations'):
+            # Conditionally remove parent relationship based on configuration
+            if self.auto_link_relationships and hasattr(child, 'relations'):
                 child.relations.remove_parent(self._get_node())
             return True
         return False
     
     def get_children(self) -> List['Node']:
         """Get list of child nodes."""
-        return self.node_list.copy()
+        return self.node_list
     
     def get_child_count(self) -> int:
         """Get number of child nodes."""
@@ -150,7 +154,7 @@ class NodeRelations:
     
     def get_all_parents(self) -> List['Node']:
         """Get all parent nodes."""
-        return self.parent_list.copy()
+        return self.parent_list
     
     def has_parent(self) -> bool:
         """Check if node has a parent."""

@@ -8,6 +8,7 @@ and NodeOperations for improved separation of concerns and maintainability.
 from typing import Optional, List, Dict, Any, Callable, Set
 from enum import Enum
 import copy
+import re
 from .node_core import NodeCore
 from .node_relations import NodeRelations
 from .glossary import Glossary
@@ -35,9 +36,15 @@ class Node:
     and easier maintenance while maintaining backward compatibility.
     """
     
+    # Static class variables for backward compatibility
+    unique_id = 0
+    level = 0
+    endless = 0
+    endless2 = 0
+    
     def __init__(self, var: str, relation: str = "", 
                  status: Glossary.NodeStatus = Glossary.NodeStatus.AMR, 
-                 visibility: bool = True):
+                 visibility: bool = True, auto_link_relationships: bool = False):
         """
         Initialize a new Node instance.
         
@@ -46,17 +53,23 @@ class Node:
             relation: The relation that links this node to its parent
             status: The status of the node
             visibility: Whether the node is visible in graphical representation
+            auto_link_relationships: If True, automatically create bidirectional
+                                   parent-child relationships when adding children.
+                                   Defaults to False for parser compatibility.
         """
         # Initialize the two components
         self.core = NodeCore(var, relation, status, visibility)
-        self.relations = NodeRelations(self.core)
+        self.relations = NodeRelations(self.core, auto_link_relationships)
         
         # Set node reference for relations component
         self.relations._set_node_reference(self)
         
-        # Statistics tracking (from NodeOperations)
+            # Statistics tracking (from NodeOperations)
         self._level = 0  # Current traversal level
         self._endless_counter = 0  # Recursion counter
+        
+        # Increment global unique_id counter
+        Node.unique_id += 1
     
     # Backward compatibility properties - delegate to core
     @property
@@ -156,6 +169,11 @@ class Node:
         # Return reference to actual list, not copy, for backward compatibility
         return self.relations.node_list
     
+    def _bypass_relationship_management(self, new_list: List['Node']) -> None:
+        """Bypass relationship management for parser compatibility."""
+        # Directly set the internal list without relationship updates
+        self.relations.node_list[:] = new_list
+    
     @node_list.setter
     def node_list(self, value: List['Node']) -> None:
         """Set the list of child nodes."""
@@ -231,18 +249,289 @@ class Node:
         """Set the node type."""
         self.core.set_node_type(node_type)
     
-    # Enhanced copy method replacing the complex get_copy()
-    def get_copy(self, mode: CopyMode = CopyMode.DEEP) -> 'Node':
+    # Missing methods from original node.py - Implementation from lines 156-460
+    
+    def get_inverse(self) -> Optional['Node']:
         """
-        Get a copy of this node.
+        Retrieves a node with an inverse relation from the node list.
+        
+        This method searches the node_list for a node whose relation matches
+        the Glossary.AMR_INVERSE pattern, excluding certain relations. If such
+        a node is found, it is returned; otherwise, None is returned.
+        
+        Returns:
+            A node with an inverse relation or None if no such node is found.
+        """
+        for node in self.node_list:
+            if (re.search(self.glossary.AMR_INVERSE, node.relation) and
+                    node.relation != self.glossary.AMR_PREP_ON_BEHALF_OF and
+                    node.relation != self.glossary.AMR_CONSIST_OF and
+                    node.relation != self.glossary.AMR_PART_OF and
+                    node.relation != Glossary.AMR_SUB_EVENT_OF and
+                    node.relation != Glossary.AMR_QUANT_OF and
+                    node.relation != Glossary.AMR_SUBSET_OF):
+                return node
+        return None
+    
+    def get_inverses(self, nodes: Optional[List['Node']] = None) -> List['Node']:
+        """
+        Retrieves all nodes with inverse relations from the node list.
+        
+        This method searches through the node_list for nodes whose relations
+        match the Glossary.AMR_INVERSE pattern, excluding certain relations.
+        The nodes are returned as a list. If the nodes parameter is provided,
+        the method recursively adds inverse nodes to the given list.
         
         Args:
-            mode: Copy mode to use
+            nodes: A list to accumulate inverse nodes (optional).
+            
+        Returns:
+            A list of nodes with inverse relations.
+        """
+        if nodes is None:
+            nodes: List['Node'] = []
+            for node in self.node_list:
+                if (re.match(self.glossary.AMR_INVERSE, node.relation) and
+                        node.relation != self.glossary.AMR_PREP_ON_BEHALF_OF and
+                        node.relation != self.glossary.AMR_CONSIST_OF and
+                        node.relation != self.glossary.AMR_PART_OF and
+                        node.relation != Glossary.AMR_SUB_EVENT_OF and
+                        node.relation != Glossary.AMR_QUANT_OF and
+                        node.relation != Glossary.AMR_SUBSET_OF and
+                        node.status != Glossary.NodeStatus.REMOVE):
+                    nodes.append(node)
+        else:
+            for node in self.node_list:
+                if (re.match(self.glossary.AMR_INVERSE, node.relation) and
+                        node.relation != self.glossary.AMR_PREP_ON_BEHALF_OF and
+                        node.relation != self.glossary.AMR_CONSIST_OF and
+                        node.relation != self.glossary.AMR_PART_OF and
+                        node.relation != Glossary.AMR_SUB_EVENT_OF and
+                        node.relation != Glossary.AMR_QUANT_OF and
+                        node.relation != Glossary.AMR_SUBSET_OF and
+                        node.status != Glossary.NodeStatus.REMOVE):
+                    nodes.append(node)
+                nodes = node.get_inverses(nodes)
+        return nodes
+    
+    def get_snt(self) -> List['Node']:
+        """
+        Retrieves all nodes related to sentences from the node list.
+        
+        This method searches through the node_list for nodes whose relation
+        matches the Glossary.AMR_SENTENCE pattern and returns them as a list.
+        The method recursively collects sentence nodes from all child nodes.
+        
+        Returns:
+            A list of nodes related to sentences.
+        """
+        snt: List['Node'] = []
+        for node in self.node_list:
+            if re.match(Glossary.AMR_SENTENCE, node.relation):
+                snt.append(node)
+        
+        for node in self.node_list:
+            snt += node.get_snt()
+        return snt
+    
+    def get_args(self) -> List['Node']:
+        """
+        Retrieves all argument nodes from the node list.
+        
+        This method searches through the node_list for nodes whose relation
+        matches the Glossary.AMR_ARG pattern and returns them as a list.
+        
+        Returns:
+            A list of argument nodes.
+        """
+        args_list: List['Node'] = []
+        for node in self.node_list:
+            if re.match(Glossary.AMR_ARG, node.relation.lower()):
+                args_list.append(node)
+        return args_list
+    
+    def get_poss(self) -> Optional['Node']:
+        """
+        Retrieves the 'possession' node from the node list.
+        
+        This method searches through the node_list for a node whose relation
+        matches the Glossary.AMR_POSS pattern. If found, the node is returned.
+        
+        Returns:
+            The 'possession' node or None if not found.
+        """
+        for node in self.node_list:
+            if re.match(Glossary.AMR_POSS, node.relation):
+                return node
+        return None
+    
+    def get_ops(self) -> List['Node']:
+        """
+        Retrieves all 'operator' nodes from the node list.
+        
+        This method searches through the node_list for nodes whose relation
+        matches the Glossary.AMR_OP pattern and returns them as a list.
+        
+        Returns:
+            A list of 'operator' nodes.
+        """
+        ops_list: List['Node'] = []
+        for node in self.node_list:
+            if re.match(self.glossary.AMR_OP, node.relation):
+                ops_list.append(node)
+        return ops_list
+    
+    def get_nodes_with_parent_list_not_empty(self) -> List['Node']:
+        """
+        Retrieves nodes that have a non-empty parent list.
+        
+        This method searches through the node_list and returns all nodes
+        whose parent_list is not empty.
+        
+        Returns:
+            A list of nodes with a non-empty parent list.
+        """
+        result = []
+        for node in self.node_list:
+            if len(node.parent_list) != 0:
+                result.append(node)
+        return result
+    
+    def substitute(self, node: 'Node') -> None:
+        """
+        Substitutes the current node with another node.
+        
+        This method copies the properties of the given node to the current node,
+        including its var, relation, __node_id, and node_list. The parent
+        and other attributes are also updated accordingly.
+        
+        Args:
+            node: The node to substitute.
+        """
+        if isinstance(node, Node):
+            self.var = node.var
+            self.relation = node.relation
+            self.core._NodeCore__node_id = node.core._NodeCore__node_id
+            # Clear current children
+            current_children = self.relations.get_children().copy()
+            for child in current_children:
+                self.relations.remove_child(child)
+            # Add all children from the substituted node
+            self.add_all(node.node_list)
+            self.status = node.status
+            self.node_type = node.node_type
+            self.verb = node.verb
+    
+    def add_all(self, node_list: List['Node']) -> None:
+        """
+        Adds a list of nodes to the current node.
+        
+        This method appends all nodes from the given node_list to the node_list
+        of the current node and sets the current node as their parent.
+        
+        Args:
+            node_list: A list of nodes to add.
+        """
+        if isinstance(node_list, list):
+            for node in node_list:
+                self.relations.add_child(node)
+    
+    def to_string(self) -> str:
+        """
+        String representation with visibility filtering.
+        
+        This method returns a string representation of the node,
+        but only if the node is visible. If not visible, returns empty string.
+        
+        Returns:
+            String representation of the node or empty string if not visible.
+        """
+        if not self.visibility:
+            return ""
+        if Node.endless > Glossary.ENDLESS:
+            return Glossary.RECURSIVE_ERROR
+            
+        stringa = "\n" + "\t" * Node.level
+        if self.relation != Glossary.TOP:
+            stringa = stringa + "{" + self.relation + " -> " + self.var + " -> "
+        else:
+            stringa = "{" + self.var + " -> "
+        
+        if len(self.node_list) > 0:
+            Node.level += 1
+            stringa = stringa + "[" + ", ".join([n.to_string() for n in self.node_list]) + "]}"
+            Node.level -= 1
+        else:
+            stringa = stringa + "[" + ", ".join([n.to_string() for n in self.node_list]) + "]}"
+        
+        return stringa
+    
+    # Enhanced copy method with backward compatibility for complex get_copy()
+    def get_copy(self, node: Optional['Node'] = None, relation: Optional[str] = None, 
+                 parser_nodes_copy: Optional[List['Node']] = None, 
+                 mode: CopyMode = CopyMode.DEEP) -> Optional['Node']:
+        """
+        Get a copy of this node with backward compatibility.
+        
+        Args:
+            node: The node to copy, if specified. If not provided, the current node is copied.
+            relation: The relation for the new node if specified. If not provided, the current relation is used.
+            parser_nodes_copy: A list of nodes to which the new node is added if specified.
+            mode: Copy mode to use (new parameter)
             
         Returns:
             Copied node
         """
+        # Backward compatibility: if old parameters are used, handle legacy behavior
+        if node is not None or relation is not None or parser_nodes_copy is not None:
+            return self._legacy_get_copy(node, relation, parser_nodes_copy)
+        
+        # New behavior: use copy mode
         return self.copy(mode)
+    
+    def _legacy_get_copy(self, node: Optional['Node'] = None, relation: Optional[str] = None, 
+                        parser_nodes_copy: Optional[List['Node']] = None) -> Optional['Node']:
+        """
+        Legacy implementation of get_copy for backward compatibility.
+        
+        This mirrors the original implementation from lines 249-302 in node.py
+        """
+        # Preventing endless recursion by checking a threshold
+        if Node.endless > Glossary.ENDLESS:
+            return None
+        
+        # Case 1: If no node and relation are specified, create a full copy of the current node
+        if node is None and relation is None and parser_nodes_copy is None:
+            Node.endless += 1
+            new_node = Node(self.var, self.relation, self.status)
+            new_node.core._NodeCore__node_id = self.core._NodeCore__node_id
+            for n in self.node_list:
+                new_node.add(n.get_copy())
+            return new_node
+        
+        # Case 2: If only relation is specified, create a new node with that relation
+        if node is None and relation is not None and parser_nodes_copy is None:
+            new_node = Node(self.var, relation, self.status)
+            new_node.core._NodeCore__node_id = self.core._NodeCore__node_id
+            return new_node
+        
+        # Case 3: If a specific node is provided, copy that node
+        if node is not None and relation is not None and parser_nodes_copy is None:
+            new_node = Node(node.var, relation, node.status)
+            new_node.core._NodeCore__node_id = node.core._NodeCore__node_id
+            for n in node.node_list:
+                new_node.add(n)
+            return new_node
+        
+        # Case 4: If parser_nodes_copy is provided, add the copy to that list
+        if node is None and relation is None and parser_nodes_copy is not None:
+            Node.endless += 1
+            new_node = Node(self.var, self.relation, self.status)
+            new_node.core._NodeCore__node_id = self.core._NodeCore__node_id
+            parser_nodes_copy.append(new_node)
+            for n in self.node_list:
+                new_node.add(n)
+            return new_node
     
     def copy(self, mode: CopyMode = CopyMode.DEEP) -> 'Node':
         """
@@ -572,11 +861,17 @@ class Node:
         
         return result
     
+    # Glossary property for backward compatibility
+    @property
+    def glossary(self) -> Glossary:
+        """Get access to glossary constants."""
+        return Glossary()
+    
     # Class-level statistics (backward compatibility)
-    unique_id = property(lambda self: self.core.node_id)
-    level = 0  # This was a class variable, keeping for compatibility
-    endless = 0  # This was a class variable, keeping for compatibility  
-    endless2 = 0  # This was a class variable, keeping for compatibility
+    @property
+    def unique_id_instance(self) -> int:
+        """Get unique_id for this instance."""
+        return self.core.node_id
     
     # String representation with recursion protection
     @recursion_guard(max_depth=1000)
@@ -641,13 +936,33 @@ class Node:
         """Get INSTANCE child for backward compatibility."""
         return self.get_child("instance")
         
-    def make_equals(self, node: 'Node') -> None:
-        """Set node ID equal to another node for backward compatibility."""
-        self.core._NodeCore__node_id = node.core._NodeCore__node_id
+    def make_equals(self, node: Optional['Node'] = None, node_id: Optional[int] = None) -> None:
+        """
+        Sets the __node_id to be equal to that of the given node or node_id.
         
-    def get_node_id(self) -> str:
-        """Get node ID for backward compatibility."""
-        return str(self.core._NodeCore__node_id)
+        This method sets the __node_id of the current object to either the __node_id
+        of the provided node or the given node_id. Only one of the parameters can
+        be specified.
+        
+        Args:
+            node: The node whose __node_id to copy.
+            node_id: The __node_id value to set.
+        """
+        if node is not None:
+            self.core._NodeCore__node_id = node.core._NodeCore__node_id
+        elif node_id is not None:
+            self.core._NodeCore__node_id = node_id
+        
+    def get_node_id(self) -> int:
+        """
+        Retrieves the node's ID.
+        
+        This method returns the unique identifier of the node.
+        
+        Returns:
+            The node's ID as an integer.
+        """
+        return self.core._NodeCore__node_id
     
     def get_tree_status(self) -> int:
         """

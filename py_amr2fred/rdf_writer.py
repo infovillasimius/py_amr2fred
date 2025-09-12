@@ -4,12 +4,7 @@ from rdflib import Graph, URIRef, Literal
 from rdflib.namespace import NamespaceManager
 
 from .glossary import Glossary, get_glossary_instance
-from .node_refactored import Node as RefactoredNode
-# Import old Node class for backward compatibility
-try:
-    from .node import Node as OriginalNode
-except ImportError:
-    OriginalNode = None
+from .node_refactored import Node
 
 
 class RdfWriter:
@@ -64,15 +59,11 @@ class RdfWriter:
         Converts a hierarchical structure of `Node` objects into an RDF graph.
 
         :param root: The root node of the structure to be transformed into RDF.
-        :type root: Node (either RefactoredNode or OriginalNode)
+        :type root: Node
         """
         self.new_graph()
-        # Accept both refactored and original Node types
-        valid_node_types = [RefactoredNode]
-        if OriginalNode is not None:
-            valid_node_types.append(OriginalNode)
-        
-        if not any(isinstance(root, node_type) for node_type in valid_node_types):
+        # Accept only refactored Node type
+        if not isinstance(root, Node):
             return
         self.queue = []
         self.queue.append(root)

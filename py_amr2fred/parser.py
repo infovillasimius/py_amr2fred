@@ -7,7 +7,7 @@ from .glossary import *
 from .config_manager import ConfigurationManager
 from .singleton_mixin import SingletonMixin
 from .exception_handler import handle_exceptions, LogLevel
-from .node import Node
+from .node_refactored import Node
 from .propbank import Propbank
 
 
@@ -1095,7 +1095,7 @@ class Parser(SingletonMixin):
 
             elif (node.relation == Glossary.AMR_PART_OF or node.relation == Glossary.AMR_CONSIST_OF
                   and node_instance is not None):
-                node.relation = node.relation.replace(Glossary.AMR_RELATION_BEGIN, Glossary.AMR)
+                node.relation = node.relation.replace(self.glossary.AMR_RELATION_BEGIN, Glossary.AMR)
 
             elif node.relation == Glossary.AMR_EXTENT and node_instance is not None:
                 node.var = Glossary.FRED + node_instance.var.capitalize()
@@ -1140,7 +1140,7 @@ class Parser(SingletonMixin):
             if node.status == Glossary.NodeStatus.REMOVE:
                 self.removed.append(node)
 
-            if node.relation.startswith(Glossary.AMR_RELATION_BEGIN) and node.status != Glossary.NodeStatus.REMOVE:
+            if node.relation.startswith(self.glossary.AMR_RELATION_BEGIN) and node.status != Glossary.NodeStatus.REMOVE:
                 node.set_status(Glossary.NodeStatus.AMR)
             elif node.status != Glossary.NodeStatus.REMOVE:
                 node.set_status(Glossary.NodeStatus.OK)
@@ -1168,7 +1168,7 @@ class Parser(SingletonMixin):
                 if not root.__eq__(op):
                     root.add(op)
 
-            if root.relation.startswith(Glossary.AMR_RELATION_BEGIN):
+            if root.relation.startswith(self.glossary.AMR_RELATION_BEGIN):
                 root.set_status(Glossary.NodeStatus.AMR)
             else:
                 root.set_status(Glossary.NodeStatus.OK)
@@ -1208,8 +1208,9 @@ class Parser(SingletonMixin):
                         if node_1.relation == node_2.relation and node_1.var == node_2.var:
                             flag = True
                     if not flag:
-                        root.node_list.append(node_1)
-                root.node_list.remove(node)
+                        root.node_list.append(node_1)  # Use direct list manipulation like original
+                root.node_list.remove(node)  # Direct list manipulation like original
+        # Process child nodes recursively - original approach
         for i, node in enumerate(root.node_list):
             root.node_list[i] = self.add_parent_list(node)
         return root
@@ -1233,12 +1234,14 @@ class Parser(SingletonMixin):
         if not isinstance(root, Node):
             return root
         if root.status == Glossary.NodeStatus.OK and root.relation.startswith(
-                Glossary.AMR_RELATION_BEGIN) and root.relation != Glossary.TOP:
+                self.glossary.AMR_RELATION_BEGIN) and root.relation != Glossary.TOP:
             root.set_status(Glossary.NodeStatus.AMR)
             return root
 
-        if root.status != Glossary.NodeStatus.OK and root.relation.startswith(
-                Glossary.AMR_RELATION_BEGIN) and root.relation != Glossary.TOP:
+        # Convert relation to string to avoid property issues
+        relation_str = str(root.relation) if hasattr(root.relation, '__str__') else root.relation
+        if root.status != Glossary.NodeStatus.OK and relation_str.startswith(
+                self.glossary.AMR_RELATION_BEGIN) and relation_str != Glossary.TOP:
             root.set_status(Glossary.NodeStatus.OK)
 
         instance = root.get_instance()
@@ -1258,18 +1261,18 @@ class Parser(SingletonMixin):
                 self.args(root)
                 instance.var = Glossary.PB_ROLESET + instance.var
 
-                if not instance.relation.startswith(Glossary.AMR_RELATION_BEGIN):
+                if not instance.relation.startswith(self.glossary.AMR_RELATION_BEGIN):
                     instance.status = Glossary.NodeStatus.OK
                 else:
                     instance.status = Glossary.NodeStatus.AMR
 
-                if not root.relation.startswith(Glossary.AMR_RELATION_BEGIN):
+                if not root.relation.startswith(self.glossary.AMR_RELATION_BEGIN):
                     root.status = Glossary.NodeStatus.OK
                 else:
                     root.status = Glossary.NodeStatus.AMR
             else:
                 root = self.other_instance_elaboration(root)
-                if not root.relation.startswith(Glossary.AMR_RELATION_BEGIN):
+                if not root.relation.startswith(self.glossary.AMR_RELATION_BEGIN):
                     root.status = Glossary.NodeStatus.OK
                 else:
                     root.status = Glossary.NodeStatus.AMR
@@ -1278,6 +1281,7 @@ class Parser(SingletonMixin):
                 if root.__eq__(node):
                     node.var = root.var
 
+        # Process child nodes recursively - original approach
         for i, node in enumerate(root.node_list):
             root.node_list[i] = self.instance_elaboration(node)
 
@@ -1624,7 +1628,7 @@ class Parser(SingletonMixin):
                 if flag:
                     ins.var = Glossary.FRED + instance.var.capitalize()
 
-                if ins.relation.startswith(Glossary.AMR_RELATION_BEGIN):
+                if ins.relation.startswith(self.glossary.AMR_RELATION_BEGIN):
                     ins.status = Glossary.NodeStatus.OK
             else:
                 node.var = n_var
@@ -1947,7 +1951,7 @@ class Parser(SingletonMixin):
                     flag = False
                 if flag:
                     instance_in_list.var = prefix + instance.var.capitalize()
-                if not instance_in_list.relation.startswith(Glossary.AMR_RELATION_BEGIN):
+                if not instance_in_list.relation.startswith(self.glossary.AMR_RELATION_BEGIN):
                     instance_in_list.set_status(Glossary.NodeStatus.OK)
             else:
                 node.var = n_var

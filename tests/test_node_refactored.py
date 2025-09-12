@@ -10,10 +10,11 @@ class TestNodeRefactored(unittest.TestCase):
 
     def setUp(self):
         """Set up test nodes."""
-        self.root = Node("root", "top")
-        self.child1 = Node("child1", ":arg0")
-        self.child2 = Node("child2", ":arg1")
-        self.grandchild = Node("grandchild", ":mod")
+        # Use automatic relationship linking for these tests
+        self.root = Node("root", "top", auto_link_relationships=True)
+        self.child1 = Node("child1", ":arg0", auto_link_relationships=True)
+        self.child2 = Node("child2", ":arg1", auto_link_relationships=True)
+        self.grandchild = Node("grandchild", ":mod", auto_link_relationships=True)
 
     def test_node_initialization(self):
         """Test basic node initialization."""
