@@ -31,15 +31,70 @@ The `py_amr2fred` package consists of several interconnected modules that work t
 
 ```mermaid
 classDiagram
+    %% ================================
+    %% DECOUPLED ARCHITECTURE MODULES
+    %% ================================
+    
+    %% ====== AMR2FRED MODULE (Core AMR to FRED transformation) ======
     class Amr2fred {
         +Parser parser
         +RdfWriter writer
         +Glossary glossary
         +TafPostProcessor taf
+        +IText2AMR txt2amr
         +translate(amr, text, mode, serialize) str|Graph
         +get_amr(text, alt_api, multilingual) str
     }
 
+    class Parser {
+        +List~Node~ nodes
+        +List~Couple~ couples
+        +ConfigurationManager config
+        +Glossary glossary
+        +parse(amr_string) Node
+        +multi_sentence(root) Node
+        +get_parser()$ Parser
+    }
+
+    class RdfWriter {
+        +Graph graph
+        +Graph not_visible_graph
+        +NamespaceManager namespace_manager
+        +Glossary glossary
+        +to_rdf(root_node) void
+        +serialize(mode) str
+        +new_graph() void
+        +get_prefixes() List~str~
+    }
+
+    class TafPostProcessor {
+        +str framester_sparql
+        +str ewiser_wsd_url
+        +str usea_preprocessing_url
+        +str usea_wsd_url
+        +NamespaceManager namespace_manager
+        +disambiguate(text, graph) Graph
+        +disambiguate_usea(text, graph) Graph
+        +link_to_wikidata(graph) Graph
+    }
+
+    %% ====== TXT2FRED MODULE (Text to FRED processing pipeline) ======
+    class Text2AMR {
+        +str spring_uri
+        +str spring_uni_uri
+        +str usea_uri
+        +__init__(txt2amr_uri, m_txt2amr_uri)
+        +get_amr(text, alt_api, multilingual) str
+    }
+
+    %% ====== ITXT2FRED INTERFACE (API layer for text to FRED operations) ======
+    class IText2AMR {
+        <<abstract>>
+        +__init__(*args, **kwargs)
+        +get_amr(text, *args, **kwargs) str
+    }
+
+    %% ====== CORE DATA STRUCTURES ======
     class Node {
         +NodeCore core
         +NodeRelations relations
@@ -79,51 +134,16 @@ classDiagram
         +is_leaf() bool
     }
 
-    class Parser {
-        +List~Node~ nodes
-        +List~Couple~ couples
-        +parse(amr_string) Node
-        +multi_sentence(root) Node
-        +get_parser()$ Parser
-    }
-
-    class RdfWriter {
-        +Graph graph
-        +Graph not_visible_graph
-        +NamespaceManager namespace_manager
-        +to_rdf(root_node) void
-        +serialize(mode) str
-        +new_graph() void
-    }
-
+    %% ====== CONFIGURATION & GLOSSARY SYSTEM ======
     class Glossary {
         +Dict constants
         +List~str~ NAMESPACE
         +List~str~ PREFIX
         +str FRED_NS
+        +str DEFAULT_FRED_NS
         +AMR_* patterns
         +get_constant(key) str
         +load_configuration() void
-    }
-
-    class TafPostProcessor {
-        +disambiguate(text, graph) Graph
-        +disambiguate_usea(text, graph) Graph
-        +link_to_wikidata(graph) Graph
-    }
-
-    class DigraphWriter {
-        +to_png(graph, not_visible_graph) IO
-        +to_svg_string(graph, not_visible_graph) str
-        +create_digraph(root_node) str
-    }
-
-    class Propbank {
-        +Dict frame_data
-        +Dict role_data
-        +get_frame_info(predicate) Dict
-        +get_role_mapping(frame, role) str
-        +load_propbank_data() void
     }
 
     class ConfigurationManager {
@@ -132,6 +152,21 @@ classDiagram
         +EntityClassifier classifier
         +ValidationService validator
         +get_instance() ConfigurationManager
+    }
+
+    %% ====== SUPPORTING COMPONENTS ======
+    class DigraphWriter {
+        +to_png(graph, not_visible_graph)$ IO
+        +to_svg_string(graph, not_visible_graph)$ str
+        +create_digraph(root_node)$ str
+    }
+
+    class Propbank {
+        +Dict frame_data
+        +Dict role_data
+        +get_frame_info(predicate) Dict
+        +get_role_mapping(frame, role) str
+        +load_propbank_data() void
     }
 
     class Couple {
@@ -144,6 +179,7 @@ classDiagram
         +__str__() str
     }
 
+    %% ====== UTILITY CLASSES ======
     class URIBuilder {
         +ConfigurationManager config
         +build_namespace_uri(prefix, local_name) str
@@ -152,15 +188,6 @@ classDiagram
         +sanitize_local_name(name) str
         +build_instance_uri(prefix, instance_type, identifier) str
         +build_property_uri(prefix, property_name) str
-    }
-
-    class GraphFactory {
-        +ConfigurationManager config
-        +URIBuilder uri_builder
-        +create_graph(bind_namespaces, custom_namespaces) rdflib.Graph
-        +create_graph_pair(bind_namespaces) tuple
-        +clone_graph_structure(source_graph) rdflib.Graph
-        +_bind_default_namespaces(graph) void
     }
 
     class SingletonMixin {
@@ -177,6 +204,7 @@ classDiagram
         +__exit__(exc_type, exc_val, exc_tb) None
     }
 
+    %% ====== CONFIGURATION MANAGERS ======
     class NamespaceManager {
         +ConfigurationManager _config_manager
         +Dict _namespaces_config
@@ -199,17 +227,6 @@ classDiagram
         +get_constant(constant_name) Any
     }
 
-    class LinguisticDataProvider {
-        +ConfigurationManager _config_manager
-        +Dict _linguistic_config
-        +List _adjectives
-        +get_pronouns(category) List~str~
-        +get_conjunctions() List~str~
-        +get_prepositions() List~str~
-        +get_manner_adverbs() List~str~
-        +get_adjectives() List~str~
-    }
-
     class EntityClassifier {
         +ConfigurationManager _config_manager
         +Dict _entities_config
@@ -228,22 +245,7 @@ classDiagram
         +validate_pattern(value, data_type) bool
     }
 
-    class APIEndpointManager {
-        +ConfigurationManager _config_manager
-        +Dict _api_config
-        +get_text2amr_endpoint(variant) str
-        +get_multilingual_amr_endpoint(variant) str
-        +get_request_config() Dict
-    }
-
-    class DataSourceManager {
-        +ConfigurationManager _config_manager
-        +Dict _data_config
-        +get_propbank_config() Dict
-        +get_data_path(path_type) str
-        +resolve_data_file_path(relative_path) Path
-    }
-
+    %% ====== METACLASSES & DESCRIPTORS ======
     class GlossaryMeta {
         <<metaclass>>
         +__getattribute__(name) Any
@@ -256,7 +258,7 @@ classDiagram
         +__get__(obj, cls) Any
     }
 
-    %% Enums - Note: duplicated in both config_manager.py and glossary.py
+    %% ====== ENUMS ======
     class RdflibMode {
         <<enumeration>>
         TURTLE
@@ -292,27 +294,6 @@ classDiagram
         CHILDREN_ONLY
     }
 
-    class PropbankFrameFields {
-        <<enumeration>>
-        PB_Frame
-        PB_FrameLabel
-        PB_Role
-        FN_Frame
-        VA_Frame
-    }
-
-    class PropbankRoleFields {
-        <<enumeration>>
-        PB_Frame
-        PB_Role
-        PB_RoleLabel
-        PB_GenericRole
-        PB_Tr
-        PB_ARG
-        VA_Role
-    }
-
-    %% Enums defined in exception_handler.py
     class LogLevel {
         <<enumeration>>
         DEBUG
@@ -322,85 +303,76 @@ classDiagram
         CRITICAL
     }
 
+    %% ================================
+    %% MODULE RELATIONSHIPS
+    %% ================================
 
-    %% Relationships
+    %% Main orchestration - Amr2fred uses all components
     Amr2fred --> Parser : uses
     Amr2fred --> RdfWriter : uses
     Amr2fred --> Glossary : uses
     Amr2fred --> TafPostProcessor : uses
+    Amr2fred --> IText2AMR : uses interface
 
-    Node --> NodeCore : contains
-    Node --> NodeRelations : contains
-    NodeRelations --> Node : manages
+    %% Text2AMR module implements interface
+    Text2AMR ..|> IText2AMR : implements
+    Amr2fred o-- Text2AMR : composition
 
+    %% Core Node system
+    Node --> NodeCore : composition
+    Node --> NodeRelations : composition
+    NodeRelations o-- Node : manages
+
+    %% Parser creates and manages nodes
     Parser --> Node : creates
     Parser --> Couple : creates
     Parser --> Glossary : uses
-    Parser --> SingletonMixin : inherits
+    Parser --> ConfigurationManager : uses
+    Parser --|> SingletonMixin : inherits
     Parser --> RecursionGuard : uses
 
+    %% RdfWriter processes nodes into RDF
     RdfWriter --> Node : processes
     RdfWriter --> Glossary : uses
-    RdfWriter --> URIBuilder : uses
-    RdfWriter --> GraphFactory : uses
+    RdfWriter --> NamespaceManager : uses
 
-    TafPostProcessor --> Propbank : uses
+    %% TafPostProcessor enriches RDF graphs
+    TafPostProcessor --> NamespaceManager : uses
     TafPostProcessor --> RecursionGuard : uses
 
+    %% Supporting components
     DigraphWriter --> RecursionGuard : uses
+    Propbank --|> SingletonMixin : inherits
 
-    %% Exception Handler Relationships
-    RecursionGuard --> LogLevel : uses
-
-    %% Configuration Management Relationships
+    %% Configuration management system
     ConfigurationManager --> NamespaceManager : creates
     ConfigurationManager --> AMRPatternMatcher : creates
-    ConfigurationManager --> LinguisticDataProvider : creates
     ConfigurationManager --> EntityClassifier : creates
     ConfigurationManager --> ValidationService : creates
-    ConfigurationManager --> APIEndpointManager : creates
-    ConfigurationManager --> DataSourceManager : creates
 
-    NamespaceManager --> ConfigurationManager : uses
-    AMRPatternMatcher --> ConfigurationManager : uses
-    LinguisticDataProvider --> ConfigurationManager : uses
-    EntityClassifier --> ConfigurationManager : uses
-    ValidationService --> ConfigurationManager : uses
-    APIEndpointManager --> ConfigurationManager : uses
-    DataSourceManager --> ConfigurationManager : uses
+    NamespaceManager --> ConfigurationManager : depends on
+    AMRPatternMatcher --> ConfigurationManager : depends on
+    EntityClassifier --> ConfigurationManager : depends on
+    ValidationService --> ConfigurationManager : depends on
 
+    %% Glossary system
     Glossary --> ConfigurationManager : uses
-    Glossary --> GlossaryMeta : uses as metaclass
+    Glossary --> GlossaryMeta : metaclass
     Glossary --> classproperty : uses
 
-    %% URI Building and Graph Factory Relationships
+    %% URI Building
     URIBuilder --> ConfigurationManager : uses
-    GraphFactory --> ConfigurationManager : uses
-    GraphFactory --> URIBuilder : uses
+    RdfWriter --> URIBuilder : may use
 
-    %% Enum Definitions (defined in both config_manager.py and glossary.py)
-    ConfigurationManager --> RdflibMode : defines
-    ConfigurationManager --> NodeStatus : defines
-    ConfigurationManager --> NodeType : defines
-    ConfigurationManager --> PropbankFrameFields : defines
-    ConfigurationManager --> PropbankRoleFields : defines
-    
-    Glossary --> RdflibMode : defines
-    Glossary --> NodeStatus : defines
-    Glossary --> NodeType : defines
-    Glossary --> PropbankFrameFields : defines
-    Glossary --> PropbankRoleFields : defines
+    %% Exception handling
+    RecursionGuard --> LogLevel : uses
 
+    %% Enum usage
     Node --> CopyMode : uses
-    Node --> RecursionGuard : uses
-    Node --> NodeCore : contains
-    Node --> NodeRelations : contains
-
-    Propbank --> SingletonMixin : inherits
-    
-    %% Additional relationships for missing classes
-    GraphFactory --> NamespaceManager : uses
-    URIBuilder --> NamespaceManager : uses
+    Node --> NodeStatus : uses
+    Node --> NodeType : uses
+    Glossary --> RdflibMode : defines
+    ConfigurationManager --> RdflibMode : defines
 ```
 
 ## Module Details
