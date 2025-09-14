@@ -39,7 +39,7 @@ Push your changes to your forked repository:
     git push origin feature-new
 
 7. **Submit a Pull Request**
-Go to the GitHub page of your fork and click on "New Pull Request." Make sure to select the base repository (`infovillasimius/py_amr2fred`) and the branch you want to merge into (usually `main`). Provide a description of the changes and any relevant details. Then, submit the pull request.
+Go to the GitHub page of your fork and click "New Pull Request." Make sure the base repository is infovillasimius/py_amr2fred and select development as the branch to merge into. Provide a description of your changes and any relevant details, then submit the pull request.
 
 
 Coding Standards
