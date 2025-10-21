@@ -6,7 +6,7 @@ Python library version of
 [Text2AMR2FRED](https://arco.istc.cnr.it/txt-amr-fred/) incorporating the core functions of
 [amr2fred](http://framester.istc.cnr.it/amr-2-fred).
 It enables seamless transformation of natural language text into RDF/OWL Knowledge Graphs
-through Abstract Meaning Representation ([AMR](https://amr.isi.edu/)), according
+through Abstract Meaning Representation ([AMR](https://github.com/amrisi/amr-guidelines/blob/master/amr.md)), according
 to [FRED](http://wit.istc.cnr.it/stlab-tools/fred/)'s formal semantics and ontology design patterns.
 
 
