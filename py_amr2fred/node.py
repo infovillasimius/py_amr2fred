@@ -174,7 +174,7 @@ class Node:
                 return node
         return None
 
-    def get_inverses(self, nodes=None):
+    def get_inverses(self, nodes=None, visited=None):
         """
         Retrieves all nodes with inverse relations from the node list.
 
@@ -183,11 +183,21 @@ class Node:
         The nodes are returned as a list. If the `nodes` parameter is provided,
         the method recursively adds inverse nodes to the given list.
 
+        :param visited: The list of the visited nodes
         :param nodes: A list to accumulate inverse nodes (optional).
         :type nodes: list[Node], optional
         :rtype: list[Node]
         :return: A list of nodes with inverse relations.
         """
+
+        if visited is None:
+            visited = set()
+
+        # Avoid revisiting nodes based on their unique internal ID
+        if self.__node_id in visited:
+            return nodes if nodes is not None else []
+        visited.add(self.__node_id)
+
         if nodes is None:
             nodes: list[Node] = []
             for node in self.node_list:
@@ -211,7 +221,7 @@ class Node:
                         node.relation != Glossary.AMR_SUBSET_OF and
                         node.status != Glossary.NodeStatus.REMOVE):
                     nodes.append(node)
-                nodes = node.get_inverses(nodes)
+                nodes = node.get_inverses(nodes, visited)
         return nodes
 
     def make_equals(self, node=None, node_id=None):
