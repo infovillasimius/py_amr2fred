@@ -515,7 +515,7 @@ class TafPostProcessor:
             if not os.path.isfile(zip_db_file_name):
                 from tqdm import tqdm
                 try:
-                    url = "http://hrilabdemo.ddns.net/index_enwiki-latest.zip"
+                    url = "http://192.167.149.11/index_enwiki-latest.zip"
                     response = requests.get(url, stream=True)
                     logger.info("Downloading index_enwiki-latest db...")
                     with open(zip_db_file_name, "wb") as handle:

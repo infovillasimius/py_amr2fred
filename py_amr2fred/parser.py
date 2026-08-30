@@ -169,82 +169,156 @@ class Parser:
 
     def get_nodes(self, relation: str, amr_list: list[str]) -> Node | None:
         """
-        Retrieves nodes from the AMR string based on the provided top node relation.
+            Retrieves nodes from the AMR string based on the provided top node relation.
+            New optimized version with Stack (O(N)), immune to Stack Overflow.
 
-        :param relation: The top node relation.
-        :type relation: str
-        :param amr_list: The array of words representing the AMR structure.
-        :type amr_list: list[str]
-        :return: The root node or None if an error occurs.
-        :rtype: Node | None
+            :param relation: The top node relation.
+            :type relation: str
+            :param amr_list: The array of words representing the AMR structure.
+            :type amr_list: list[str]
+            :return: The root node or None if an error occurs.
+            :rtype: Node | None
         """
         if amr_list is None or len(amr_list) == 0:
             return None
         root = Node(var=amr_list[1], relation=relation)
         self.nodes.append(root)
+        stack = [root]
         liv = 0
         i = 0
         while i < len(amr_list):
             word = amr_list[i]
+            current_root = stack[-1] if stack else root
             match word:
                 case "(":
                     liv += 1
-                    if liv == 2:
-                        liv2 = 0
-                        new_list = []
-                        j = i
-                        while j < len(amr_list):
-                            word2 = amr_list[j]
-                            match word2:
-                                case "(":
-                                    liv2 += 1
-                                    new_list.append(word2)
-                                case ")":
-                                    liv2 -= 1
-                                    new_list.append(word2)
-                                    if liv2 == 0:
-                                        root.add(self.get_nodes(amr_list[i - 1], new_list))
-                                        i = j
-                                        j = len(amr_list)
-                                        liv -= 1
-                                case _:
-                                    new_list.append(word2)
-                            j += 1
+
+                    if liv >= 2:
+                        sub_relation = amr_list[i - 1]
+                        sub_var = amr_list[i + 1]
+
+                        new_sub_node = Node(var=sub_var, relation=sub_relation)
+                        current_root.add(new_sub_node)
+                        self.nodes.append(new_sub_node)
+
+                        stack.append(new_sub_node)
+
                 case ")":
                     liv -= 1
+                    if liv >= 1 and stack:
+                        stack.pop()
+
                 case "/":
                     for node in self.nodes:
-                        if node.var == root.var and node.get_instance() is None:
-                            node.make_equals(node=root)
-                    root.add(Node(amr_list[i + 1], Glossary.INSTANCE))
+                        if node.var == current_root.var and node.get_instance() is None:
+                            node.make_equals(node=current_root)
+                    current_root.add(Node(amr_list[i + 1], Glossary.INSTANCE))
+
                 case _:
-                    pass
                     try:
-                        pass
                         if word[0] == ":" and len(amr_list) > i + 1 and amr_list[i + 1] != "(":
                             flag = False
                             for node in self.nodes:
                                 if node.var == amr_list[i + 1]:
                                     new_node = node.get_copy(relation=word)
-                                    root.add(new_node)
+                                    current_root.add(new_node)
                                     self.nodes.append(new_node)
                                     flag = True
                                     break
 
                             if not flag:
                                 new_node = Node(amr_list[i + 1], word)
-                                root.add(new_node)
+                                current_root.add(new_node)
                                 self.nodes.append(new_node)
 
                     except Exception as e:
                         logger.warning(e)
                         new_node = Node(amr_list[i + 1], word)
-                        root.add(new_node)
+                        current_root.add(new_node)
                         self.nodes.append(new_node)
             i += 1
         if liv != 0:
             return None
         return root
+
+    # def get_nodes(self, relation: str, amr_list: list[str]) -> Node | None:
+    #     """
+    #     Retrieves nodes from the AMR string based on the provided top node relation.
+    #
+    #     :param relation: The top node relation.
+    #     :type relation: str
+    #     :param amr_list: The array of words representing the AMR structure.
+    #     :type amr_list: list[str]
+    #     :return: The root node or None if an error occurs.
+    #     :rtype: Node | None
+    #     """
+    #     if amr_list is None or len(amr_list) == 0:
+    #         return None
+    #     root = Node(var=amr_list[1], relation=relation)
+    #     self.nodes.append(root)
+    #     liv = 0
+    #     i = 0
+    #     while i < len(amr_list):
+    #         word = amr_list[i]
+    #         match word:
+    #             case "(":
+    #                 liv += 1
+    #                 if liv == 2:
+    #                     liv2 = 0
+    #                     new_list = []
+    #                     j = i
+    #                     while j < len(amr_list):
+    #                         word2 = amr_list[j]
+    #                         match word2:
+    #                             case "(":
+    #                                 liv2 += 1
+    #                                 new_list.append(word2)
+    #                             case ")":
+    #                                 liv2 -= 1
+    #                                 new_list.append(word2)
+    #                                 if liv2 == 0:
+    #                                     root.add(self.get_nodes(amr_list[i - 1], new_list))
+    #                                     i = j
+    #                                     j = len(amr_list)
+    #                                     liv -= 1
+    #                             case _:
+    #                                 new_list.append(word2)
+    #                         j += 1
+    #             case ")":
+    #                 liv -= 1
+    #             case "/":
+    #                 for node in self.nodes:
+    #                     if node.var == root.var and node.get_instance() is None:
+    #                         node.make_equals(node=root)
+    #                 root.add(Node(amr_list[i + 1], Glossary.INSTANCE))
+    #             case _:
+    #                 pass
+    #                 try:
+    #                     pass
+    #                     if word[0] == ":" and len(amr_list) > i + 1 and amr_list[i + 1] != "(":
+    #                         flag = False
+    #                         for node in self.nodes:
+    #                             if node.var == amr_list[i + 1]:
+    #                                 new_node = node.get_copy(relation=word)
+    #                                 root.add(new_node)
+    #                                 self.nodes.append(new_node)
+    #                                 flag = True
+    #                                 break
+    #
+    #                         if not flag:
+    #                             new_node = Node(amr_list[i + 1], word)
+    #                             root.add(new_node)
+    #                             self.nodes.append(new_node)
+    #
+    #                 except Exception as e:
+    #                     logger.warning(e)
+    #                     new_node = Node(amr_list[i + 1], word)
+    #                     root.add(new_node)
+    #                     self.nodes.append(new_node)
+    #         i += 1
+    #     if liv != 0:
+    #         return None
+    #     return root
 
     def check(self, root: Node) -> Node | None:
         """

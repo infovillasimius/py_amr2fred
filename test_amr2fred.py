@@ -42,8 +42,8 @@ class TestAmr2fred(unittest.TestCase):
 
     @patch.object(Amr2fred, "get_amr", return_value="(d / test-amr)")
     @patch.object(Glossary, "FRED_NS", "http://example.org/fred#")
-    @patch("rdf_writer.RdfWriter.to_rdf")
-    @patch("rdf_writer.RdfWriter.serialize", return_value="<rdf serialization>")
+    @patch("py_amr2fred.rdf_writer.RdfWriter.to_rdf")
+    @patch("py_amr2fred.rdf_writer.RdfWriter.serialize", return_value="<rdf serialization>")
     def test_translate(self, mock_get_amr, mock_to_rdf, mock_serialize):
         """Test translate method with serialization."""
 
@@ -55,7 +55,7 @@ class TestAmr2fred(unittest.TestCase):
         mock_serialize.assert_called_once()
 
     @patch.object(Amr2fred, "get_amr", return_value="(e / test-amr)")
-    @patch("rdf_writer.RdfWriter.to_rdf")
+    @patch("py_amr2fred.rdf_writer.RdfWriter.to_rdf")
     def test_translate_graph_output(self, mock_to_rdf, mock_get_amr):
         """Test translate method without serialization (Graph output)."""
 
